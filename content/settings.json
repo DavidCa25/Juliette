@@ -1,0 +1,31 @@
+{
+  "whatsappDisplay": "[NÚMERO]",
+  "email": "julietteaa2709@gmail.com",
+  "instagram": { "handle": "@juliette___aa", "url": "https://instagram.com/juliette___aa" },
+  "tiktok": { "handle": "@[usuario]", "url": "https://tiktok.com/" },
+  "city": "León",
+  "shippingZone": "[ZONA]",
+  "pickupPoint": "[PUNTO DE ENTREGA]",
+  "weeklySlots": 5,
+  "depositPercent": 50,
+  "leadDaysReady": "3",
+  "leadDaysCustom": "7",
+  "readyShipDays": "9",
+  "shippingCost": null,
+  "freeShippingFrom": null,
+  "customFrom": null,
+  "nextDrop": "[FECHA]",
+  "policy": { "returnDays": 7, "damageHours": 48, "refundDays": 10, "privacyDays": 20, "designFee": "[MONTO o %]" },
+  "legal": {
+    "owner": "[NOMBRE O RAZÓN SOCIAL]",
+    "taxId": "[RFC / ID FISCAL]",
+    "address": "[DOMICILIO FISCAL]",
+    "country": "[PAÍS]",
+    "updated": "17 de noviembre de 2026"
+  },
+  "videos": [
+    { "title": "Polillas", "tag": "Diseño Julietté", "video": "/media/polillas_totebag.mp4", "poster": "/media/still_polillas.webp" },
+    { "title": "Pedido personalizado", "tag": "A tu medida", "video": "/media/snoopy_totebag.mp4", "poster": "/media/still_snoopy.webp" },
+    { "title": "Galaxia", "tag": "Colección 01", "video": "/media/bts_totebag.mp4", "poster": "/media/still_bts.webp" }
+  ]
+}

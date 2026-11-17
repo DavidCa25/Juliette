@@ -9,6 +9,9 @@ interface ImportMetaEnv {
   readonly VITE_PAYMENT_LINK?: string
   readonly VITE_GA_ID?: string
   readonly VITE_META_PIXEL_ID?: string
+  readonly VITE_SENTRY_DSN?: string
+  readonly VITE_SENTRY_ENV?: string
+  readonly VITE_RELEASE?: string
 }
 
 interface ImportMeta {

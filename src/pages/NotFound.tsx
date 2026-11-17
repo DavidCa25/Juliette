@@ -1,9 +1,18 @@
+import { useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { usePageMeta } from '../lib/usePageMeta'
 import { Arrow, Star, btnPrimary, container } from '../components/ui'
 
 export default function NotFound() {
   usePageMeta('Página no encontrada')
+  useEffect(() => {
+    // Evita que los buscadores indexen direcciones que no existen
+    const tag = document.createElement('meta')
+    tag.name = 'robots'
+    tag.content = 'noindex'
+    document.head.appendChild(tag)
+    return () => tag.remove()
+  }, [])
   return (
     <section className={`${container} relative py-[clamp(80px,12vw,180px)] flex flex-col items-start gap-8`}>
       <Star size={30} color="#82001a" className="jl-star absolute right-[12%] top-[20%]" />

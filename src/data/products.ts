@@ -1,3 +1,9 @@
+/**
+ * Los productos viven en content/products/*.json y se agregan o editan desde /admin.
+ * Cada archivo es una pieza; el nombre del archivo es su dirección (ej. galaxia → /producto/galaxia).
+ */
+import { site } from '../config/site'
+
 export type Media =
   | { kind: 'image'; src: string; alt: string }
   | { kind: 'video'; src: string; poster: string; alt: string }
@@ -12,21 +18,57 @@ export type ProductOption = {
   needsIdea?: boolean
 }
 
+export type Category = 'tote' | 'prenda' | 'cuadro' | 'agenda' | 'accesorio' | 'hogar' | 'otro'
+export type Status = 'disponible' | 'bajo-pedido' | 'agotado'
+
+export const categories: Record<Category, string> = {
+  tote: 'Tote bags',
+  prenda: 'Prendas',
+  cuadro: 'Cuadros',
+  agenda: 'Agendas y papelería',
+  accesorio: 'Accesorios',
+  hogar: 'Hogar',
+  otro: 'Otras piezas',
+}
+
 export type Product = {
   slug: string
   code: string
   name: string
+  category: Category
   collection: string
   /** null = precio por confirmar */
   price: number | null
-  status: 'disponible' | 'bajo-pedido' | 'agotado'
+  status: Status
+  featured: boolean
+  order: number
   short: string
   description: string
   dimensions: string
   material: string
   technique: string
   media: Media[]
+  cover: string
   options: ProductOption[]
+}
+
+type RawProduct = {
+  name?: string
+  code?: string
+  category?: string
+  collection?: string
+  price?: number | string | null
+  status?: string
+  featured?: boolean
+  order?: number
+  personalizable?: boolean
+  short?: string
+  description?: string
+  dimensions?: string
+  material?: string
+  technique?: string
+  images?: ({ src?: string; alt?: string } | string)[]
+  video?: string | null
 }
 
 const commonOptions: ProductOption[] = [
@@ -35,53 +77,60 @@ const commonOptions: ProductOption[] = [
   { id: 'medida', label: 'Diseño a medida', sub: 'Boceto previo y un ajuste', extra: null, extraLabel: 'Cotizar', needsIdea: true },
 ]
 
-export const products: Product[] = [
-  {
-    slug: 'galaxia',
-    code: 'JLT-TB-001',
-    name: 'Galaxia',
-    collection: 'Colección 01',
-    price: null,
-    status: 'disponible',
-    short: 'Lona de algodón · [__] × [__] cm',
-    description:
-      'Tote bag de lona de algodón con ilustración pintada a mano: trazos en tonos lavanda con detalles en negro y blanco. Por ser una pieza a mano, cada ejemplar tiene variaciones propias.',
-    dimensions: '[__] × [__] cm · asas de [__] cm',
-    material: 'Lona de algodón [gramaje], color natural',
-    technique: 'Pintura textil a mano, fijada con calor',
-    media: [
-      { kind: 'image', src: '/media/still_bts.webp', alt: 'Tote bag Galaxia completa sobre pedestal' },
-      { kind: 'image', src: '/media/still_bts_detalle.webp', alt: 'Acercamiento al diseño pintado a mano' },
-      { kind: 'video', src: '/media/bts_totebag.mp4', poster: '/media/still_bts.webp', alt: 'Video de la pieza' },
-    ],
-    options: commonOptions,
-  },
-  {
-    slug: 'polillas',
-    code: 'JLT-TB-002',
-    name: 'Polillas',
-    collection: 'Colección 01',
-    price: null,
-    status: 'disponible',
-    short: 'Lona de algodón · [__] × [__] cm',
-    description:
-      'Tote bag de lona de algodón con polillas y mariposas pintadas a mano en negro sobre lona natural. Un diseño original de Julietté; cada ejemplar conserva el trazo de su elaboración.',
-    dimensions: '[__] × [__] cm · asas de [__] cm',
-    material: 'Lona de algodón [gramaje], color natural',
-    technique: 'Pintura textil a mano, fijada con calor',
-    media: [
-      { kind: 'image', src: '/media/still_polillas.webp', alt: 'Tote bag Polillas completa sobre pedestal' },
-      { kind: 'image', src: '/media/still_polillas_detalle.webp', alt: 'Acercamiento a las polillas pintadas a mano' },
-      { kind: 'video', src: '/media/polillas_totebag.mp4', poster: '/media/still_polillas.webp', alt: 'Video de la pieza' },
-    ],
-    options: commonOptions,
-  },
-]
+const files = import.meta.glob<RawProduct>('../../content/products/*.json', { eager: true, import: 'default' })
+
+function toNumber(v: RawProduct['price']): number | null {
+  if (v === null || v === undefined || v === '') return null
+  const n = typeof v === 'number' ? v : Number(String(v).replace(/[^\d.]/g, ''))
+  return Number.isFinite(n) && n > 0 ? n : null
+}
+
+function normalize(path: string, r: RawProduct): Product | null {
+  const slug = path.split('/').pop()!.replace(/\.json$/, '')
+  if (!r.name) return null
+  const images = (r.images ?? [])
+    .map((i) => (typeof i === 'string' ? { src: i, alt: r.name! } : { src: i.src ?? '', alt: i.alt || r.name! }))
+    .filter((i) => i.src)
+  const cover = images[0]?.src ?? '/media/isotipo_burdeos_md.png'
+  const media: Media[] = images.map((i) => ({ kind: 'image' as const, src: i.src, alt: i.alt }))
+  if (r.video) media.push({ kind: 'video', src: r.video, poster: cover, alt: `Video de ${r.name}` })
+  if (media.length === 0) media.push({ kind: 'image', src: cover, alt: r.name })
+  const category = (r.category && r.category in categories ? r.category : 'otro') as Category
+  const status = (['disponible', 'bajo-pedido', 'agotado'].includes(r.status ?? '') ? r.status : 'disponible') as Status
+  return {
+    slug,
+    name: r.name,
+    code: r.code ?? '',
+    category,
+    collection: r.collection ?? 'Colección',
+    price: toNumber(r.price),
+    status,
+    featured: r.featured ?? false,
+    order: r.order ?? 99,
+    short: r.short ?? '',
+    description: r.description ?? '',
+    dimensions: r.dimensions ?? '[__]',
+    material: r.material ?? '[__]',
+    technique: r.technique ?? 'Pintura a mano',
+    media,
+    cover,
+    options: r.personalizable === false ? [commonOptions[0]] : commonOptions,
+  }
+}
+
+export const products: Product[] = Object.entries(files)
+  .map(([path, r]) => normalize(path, r))
+  .filter((p): p is Product => p !== null)
+  .sort((a, b) => a.order - b.order || a.name.localeCompare(b.name))
+
+export const featuredProducts = (products.some((p) => p.featured) ? products.filter((p) => p.featured) : products).slice(0, 2)
 
 export const getProduct = (slug: string) => products.find((p) => p.slug === slug)
 
-export const showcaseVideos = [
-  { src: '/media/polillas_totebag.mp4', poster: '/media/still_polillas.webp', title: 'Polillas', tag: 'Diseño Julietté', label: 'Video de la tote Polillas' },
-  { src: '/media/snoopy_totebag.mp4', poster: '/media/still_snoopy.webp', title: 'Pedido personalizado', tag: 'A tu medida', label: 'Video de una tote personalizada' },
-  { src: '/media/bts_totebag.mp4', poster: '/media/still_bts.webp', title: 'Galaxia', tag: 'Colección 01', label: 'Video de la tote Galaxia' },
-]
+export const showcaseVideos = site.videos.map((v) => ({
+  src: v.video,
+  poster: v.poster || '/media/isotipo_burdeos_md.png',
+  title: v.title,
+  tag: v.tag,
+  label: `Video: ${v.title}`,
+}))

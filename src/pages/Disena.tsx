@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { customPricing, site } from '../config/site'
-import { defaultDesign, describeDesign, fonts, motifs, occasions, palettes, placements, sizes, type Design } from '../data/design'
+import { defaultDesign, describeDesign, fonts, motifs, occasions, palettes, placements, sizes, surfaces, type Design } from '../data/design'
 import { money, readJSON, writeJSON } from '../lib/format'
 import { openWhatsApp } from '../lib/whatsapp'
+import { track } from '../lib/analytics'
 import { usePageMeta } from '../lib/usePageMeta'
 import { useCart } from '../state/cart'
 import { MotifArt, ToteCanvas, shrinkImage, svgToPng } from '../components/disena/ToteCanvas'
@@ -11,6 +12,7 @@ import { Arrow, Star, btnPrimary, container } from '../components/ui'
 
 const KEY = 'jl-design-v1'
 const steps = [
+  { id: 'lienzo', label: 'Pieza', q: '¿Sobre qué pintamos?', hint: 'Julietté pinta procesos, no solo bolsas. Elige la pieza que quieres convertir en arte; si imaginas otra, cuéntanos en los detalles.' },
   { id: 'inspiracion', label: 'Inspiración', q: '¿Qué te inspira?', hint: 'Elige el motivo que dará vida a tu pieza. Todo se pinta a mano, así que el resultado final tendrá su propio carácter.' },
   { id: 'color', label: 'Color', q: 'Elige tu paleta', hint: 'Los tonos con los que trabajaremos el pincel. Puedes cambiarla cuantas veces quieras.' },
   { id: 'palabras', label: 'Palabras', q: '¿Quieres escribir algo?', hint: 'Un nombre, una fecha, una frase que solo tú entiendes. Opcional.' },
@@ -51,13 +53,21 @@ export default function Disena() {
     return () => window.clearTimeout(t)
   }, [design])
 
+  useEffect(() => {
+    track('design_start')
+  }, [])
+
   const set = <K extends keyof Design>(k: K, v: Design[K]) => setDesign((d) => ({ ...d, [k]: v }))
   const go = (i: number) => {
-    setStep(Math.max(0, Math.min(steps.length - 1, i)))
+    const next = Math.max(0, Math.min(steps.length - 1, i))
+    if (next !== step) track('design_step', { step: steps[next].id, surface: design.surface })
+    setStep(next)
     window.requestAnimationFrame(() => headRef.current?.focus())
   }
   const s = steps[step]
   const palette = palettes.find((p) => p.id === design.palette)!.colors
+  const surface = surfaces.find((x) => x.id === design.surface) ?? surfaces[0]
+  const hasTwoSides = surface.kind === 'tote' || surface.kind === 'agenda'
   const estimate =
     customPricing.base === null ? null : customPricing.base + (design.text.trim() && customPricing.text ? customPricing.text : 0) + (design.back && customPricing.back ? customPricing.back : 0)
 
@@ -93,13 +103,15 @@ export default function Disena() {
     setBusy(true)
     try {
       const thumb = await svgToPng(svgRef.current, 360)
-      add({ kind: 'custom', name: 'Diseño a medida', image: thumb, design: { ...design }, unitPrice: estimate, qty: 1 })
+      track('design_complete', { via: 'carrito', surface: design.surface, motif: design.motif, palette: design.palette })
+      add({ kind: 'custom', name: `${surface.name} a medida`, image: thumb, design: { ...design }, unitPrice: estimate, qty: 1 })
     } finally {
       setBusy(false)
     }
   }
 
   function sendWhatsApp() {
+    track('design_complete', { via: 'whatsapp', surface: design.surface, motif: design.motif, palette: design.palette })
     openWhatsApp(['Hola, Julietté. Creé este diseño en su sitio y me gustaría un boceto:', '', ...describeDesign(design).map((l) => `• ${l}`)].join('\n'))
   }
 
@@ -119,7 +131,7 @@ export default function Disena() {
           </h1>
         </div>
         <p className="jl-fade m-0 max-w-[380px] text-[16px] leading-[1.7]" style={{ animationDelay: '.4s' }}>
-          Elige, combina y escribe. Mientras decides, tu tote se pinta en vivo. Después, Julietté la convierte en un boceto y la pinta a mano para ti.
+          Tote, chamarra, cuadro o agenda: elige, combina y escribe. Mientras decides, tu pieza se pinta en vivo. Después, Julietté la convierte en un boceto y la pinta a mano para ti.
         </p>
       </section>
 
@@ -148,7 +160,7 @@ export default function Disena() {
         </div>
 
         <div className="flex-[1_1_480px] min-w-0 flex flex-col gap-8">
-          <ol className="m-0 p-0 list-none grid grid-cols-5 gap-2" aria-label="Pasos">
+          <ol className="m-0 p-0 list-none grid grid-cols-6 gap-2" aria-label="Pasos">
             {steps.map((st, i) => (
               <li key={st.id}>
                 <button type="button" onClick={() => go(i)} aria-current={i === step ? 'step' : undefined} className="w-full bg-transparent border-0 p-0 text-left text-borgona cursor-pointer flex flex-col gap-2">
@@ -170,6 +182,22 @@ export default function Disena() {
           </div>
 
           <div key={`body-${s.id}`} className="jl-fade" style={{ animationDelay: '.08s' }}>
+            {s.id === 'lienzo' && (
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                {surfaces.map((sf) => (
+                  <Choice key={sf.id} active={design.surface === sf.id} onClick={() => set('surface', sf.id)} className="rounded-[22px] p-3 flex flex-col gap-3">
+                    <span className="jl-studio rounded-[16px] overflow-hidden px-3 pt-3 block" aria-hidden="true">
+                      <ToteCanvas design={{ ...design, surface: sf.id }} />
+                    </span>
+                    <span className="flex flex-col gap-1 px-1 pb-1">
+                      <span className="text-[15px] font-semibold">{sf.name}</span>
+                      <span className="text-[12px] leading-snug">{sf.sub}</span>
+                    </span>
+                  </Choice>
+                ))}
+              </div>
+            )}
+
             {s.id === 'inspiracion' && (
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 {motifs.map((m) => (
@@ -265,13 +293,15 @@ export default function Disena() {
                     <label htmlFor="jl-fecha" className="jl-label">¿Para cuándo?</label>
                     <input id="jl-fecha" type="date" value={design.date} min={new Date().toISOString().slice(0, 10)} onChange={(e) => set('date', e.target.value)} className="jl-field" />
                   </div>
-                  <div className="flex flex-col gap-2">
-                    <span className="jl-label">Diseño en</span>
-                    <div className="grid grid-cols-2 gap-2 pt-2">
-                      <Choice active={!design.back} onClick={() => set('back', false)} className="rounded-full min-h-[46px] px-3 text-center text-[13px] font-semibold">Solo frente</Choice>
-                      <Choice active={design.back} onClick={() => set('back', true)} className="rounded-full min-h-[46px] px-3 text-center text-[13px] font-semibold">Frente y reverso</Choice>
+                  {hasTwoSides && (
+                    <div className="flex flex-col gap-2">
+                      <span className="jl-label">Diseño en</span>
+                      <div className="grid grid-cols-2 gap-2 pt-2">
+                        <Choice active={!design.back} onClick={() => set('back', false)} className="rounded-full min-h-[46px] px-3 text-center text-[13px] font-semibold">Solo frente</Choice>
+                        <Choice active={design.back} onClick={() => set('back', true)} className="rounded-full min-h-[46px] px-3 text-center text-[13px] font-semibold">Frente y reverso</Choice>
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </div>
                 <div className="flex flex-col gap-2">
                   <label htmlFor="jl-notas" className="jl-label">Cuéntanos tu historia</label>

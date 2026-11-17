@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { track } from '../lib/analytics'
 import { Link, useParams } from 'react-router-dom'
 import { getProduct, products } from '../data/products'
 import { site } from '../config/site'
@@ -27,6 +28,9 @@ export default function Producto() {
   const [ideaError, setIdeaError] = useState(false)
 
   usePageMeta(product?.name ?? 'Pieza no encontrada', product?.description)
+  useEffect(() => {
+    if (product) track('product_view', { slug: product.slug, category: product.category })
+  }, [product])
 
   if (!product) return <NotFound />
 
@@ -34,7 +38,7 @@ export default function Producto() {
   const media = product.media[img]
   const unitPrice = product.price === null || option.extra === null ? null : product.price + option.extra
   const priceText = opt === 'sin' ? money(product.price) : opt === 'nombre' ? `${money(product.price)} + personalización` : 'Precio según diseño'
-  const firstImage = product.media.find((m) => m.kind === 'image')?.src ?? ''
+  const firstImage = product.cover
   const panels = [
     { id: 'detalles', title: 'Detalles', body: `Medidas: ${product.dimensions}\nMaterial: ${product.material}\nTécnica: ${product.technique}` },
     { id: 'cuidados', title: 'Cuidados', body: 'Lavar al revés con agua fría · no usar cloro · evitar frotar el diseño · lavar con colores similares · secar al aire · planchar al revés.' },
@@ -53,10 +57,11 @@ export default function Producto() {
   function askWhatsApp() {
     const lines = [`Hola, Julietté. Me interesa la pieza ${product!.name} (${product!.code}).`, `Personalización: ${option.label}`]
     if (option.needsIdea && idea.trim()) lines.push(`Mi idea: ${idea.trim()}`)
+    track('whatsapp_click', { from: 'producto', slug: product!.slug })
     openWhatsApp(lines.join('\n'))
   }
 
-  const related = products.filter((p) => p.slug !== product.slug)
+  const related = products.filter((p) => p.slug !== product.slug).slice(0, 2)
 
   return (
     <>
@@ -244,7 +249,7 @@ export default function Producto() {
           </Link>
           {related.map((p) => (
             <Link key={p.slug} to={`/producto/${p.slug}`} className="flex flex-col gap-[18px]">
-              <div className="jl-zoom aspect-[4/5] rounded-t-full bg-vino"><img src={p.media[0].kind === 'image' ? p.media[0].src : ''} alt={`Tote bag ${p.name} sobre pedestal`} loading="lazy" className="w-full h-full object-cover block" /></div>
+              <div className="jl-zoom aspect-[4/5] rounded-t-full bg-vino"><img src={p.cover} alt={`${p.name}, pieza pintada a mano`} loading="lazy" className="w-full h-full object-cover block" /></div>
               <div className="flex justify-between gap-3 border-t border-borgona pt-[14px]"><span className="font-display text-[30px] leading-none">{p.name}</span><span className="text-[15px] font-semibold">{money(p.price)}</span></div>
             </Link>
           ))}

@@ -1,4 +1,5 @@
-import { useState, type FormEvent, type ReactNode } from 'react'
+import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
+import { campaign, track, visitorId } from '../lib/analytics'
 import { Link, useNavigate } from 'react-router-dom'
 import { site } from '../config/site'
 import { describeDesign } from '../data/design'
@@ -30,7 +31,7 @@ function lineText(l: CartLine) {
   if (l.kind === 'product') {
     return `• ${l.qty} × ${l.name} — ${l.optionLabel}${l.idea ? ` (“${l.idea}”)` : ''} — ${l.unitPrice === null ? 'por confirmar' : money(l.unitPrice * l.qty)}`
   }
-  return [`• ${l.qty} × Diseño a medida — se cotiza con boceto`, ...describeDesign(l.design).map((d) => `   – ${d}`)].join('\n')
+  return [`• ${l.qty} × ${l.name} — se cotiza con boceto`, ...describeDesign(l.design).map((d) => `   – ${d}`)].join('\n')
 }
 
 function Field({ id, label, error, children }: { id: string; label: string; error?: string; children: ReactNode }) {
@@ -62,10 +63,16 @@ export default function Checkout() {
   const [f, setF] = useState<Form>(empty)
   const [errors, setErrors] = useState<Partial<Record<keyof Form, string>>>({})
   const [sending, setSending] = useState(false)
+  const [website, setWebsite] = useState('')
   const set = <K extends keyof Form>(k: K, v: Form[K]) => {
     setF((x) => ({ ...x, [k]: v }))
     setErrors((e) => ({ ...e, [k]: undefined }))
   }
+
+  useEffect(() => {
+    if (lines.length) track('checkout_start', { items: lines.length })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   if (lines.length === 0) {
     return (
@@ -97,7 +104,40 @@ export default function Checkout() {
     ev.preventDefault()
     if (!validate()) return
     setSending(true)
-    const id = orderId()
+    let id = orderId()
+    // Registra el pedido en la base de datos (si está configurada). Si falla, el pedido sigue por WhatsApp.
+    try {
+      const ctrl = new AbortController()
+      const t = window.setTimeout(() => ctrl.abort(), 8000)
+      const r = await fetch('/api/orders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        signal: ctrl.signal,
+        body: JSON.stringify({
+          website,
+          customer: { name: f.name, phone: f.phone, email: f.email },
+          delivery: f.delivery,
+          address: f.delivery === 'envio' ? { street: f.street, city: f.city, zip: f.zip, references: f.references } : null,
+          payment: f.payment,
+          gift: f.gift,
+          items: lines.map((l) =>
+            l.kind === 'product'
+              ? { kind: 'product', slug: l.slug, name: l.name, optionId: l.optionId, optionLabel: l.optionLabel, idea: l.idea, qty: l.qty }
+              : { kind: 'custom', name: l.name, qty: l.qty, design: { ...l.design, reference: l.design.reference ? 'adjunta en el chat' : null } },
+          ),
+          visitorId: visitorId(),
+          source: campaign() ?? null,
+        }),
+      })
+      window.clearTimeout(t)
+      if (r.ok) {
+        const data = (await r.json()) as { id?: string }
+        if (data.id) id = data.id
+      }
+    } catch {
+      /* sin conexión con la base de datos: se usa el número local */
+    }
+    track('order_submitted', { items: lines.length })
     const total = subtotal === null ? 'Por confirmar' : money(subtotal)
     const payment = { transferencia: 'Transferencia bancaria', enlace: 'Tarjeta con enlace de pago', efectivo: 'Efectivo al recoger' }[f.payment]
     const message = [
@@ -161,6 +201,10 @@ export default function Checkout() {
       </h1>
 
       <form onSubmit={onSubmit} noValidate className="flex flex-wrap gap-[clamp(32px,6vw,96px)] items-start">
+        <div aria-hidden="true" className="absolute -left-[9999px] w-px h-px overflow-hidden">
+          <label htmlFor="co-website">Deja este campo vacío</label>
+          <input id="co-website" tabIndex={-1} autoComplete="off" value={website} onChange={(e) => setWebsite(e.target.value)} />
+        </div>
         <div className="flex-[1.5_1_520px] min-w-0 flex flex-col gap-12">
           <fieldset className="m-0 p-0 border-0 flex flex-col gap-6">
             <legend className="jl-eyebrow mb-6">01 · Tus datos</legend>

@@ -111,7 +111,9 @@ export function Privacidad() {
         <li>Mejorar el sitio con estadísticas agregadas, solo con tu consentimiento.</li>
       </ul>
       <h2>Con quién los compartimos</h2>
-      <p>Con proveedores necesarios para operar: mensajería, paquetería, pasarela de pago, alojamiento web y, si las aceptas, herramientas de analítica. No vendemos tus datos.</p>
+      <p>Con proveedores necesarios para operar: mensajería, paquetería, pasarela de pago, alojamiento web (Vercel), base de datos de pedidos (Neon), almacenamiento de imágenes (Cloudflare), envío de correos de pedido (Resend), detección de errores técnicos sin datos personales (Sentry) y, si las aceptas, herramientas de analítica. No vendemos tus datos.</p>
+      <h2>Cuánto tiempo los guardamos</h2>
+      <p>Los datos de pedidos se conservan mientras sean necesarios para la relación comercial y las obligaciones fiscales. Los datos de navegación se conservan de forma agregada y puedes pedir su eliminación en cualquier momento.</p>
       <h2>Tus derechos</h2>
       <p>Puedes acceder, rectificar, cancelar u oponerte al uso de tus datos, así como revocar tu consentimiento, escribiendo a {site.email}. Responderemos en un plazo máximo de {site.policy.privacyDays} días hábiles.</p>
       <h2>Almacenamiento en tu dispositivo</h2>
@@ -130,7 +132,7 @@ export function Cookies() {
       <h2>Las que usamos</h2>
       <ul>
         <li><strong>Necesarias:</strong> guardan tu carrito, tu diseño en curso, tu último pedido y tus preferencias de cookies. Siempre activas.</li>
-        <li><strong>Analítica (opcional):</strong> Google Analytics, para entender de forma agregada qué secciones se visitan. Solo se cargan si las aceptas.</li>
+        <li><strong>Analítica (opcional):</strong> nuestra propia medición, que guarda un identificador aleatorio de visita y las páginas y piezas que ves, sin datos personales; y Google Analytics, si está activo. Solo se usan si las aceptas.</li>
         <li><strong>Marketing (opcional):</strong> píxel de Meta, para medir campañas en redes sociales. Solo se cargan si las aceptas.</li>
       </ul>
       <h2>Cómo cambiar tu decisión</h2>

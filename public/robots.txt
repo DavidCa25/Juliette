@@ -1,7 +1,0 @@
-User-agent: *
-Allow: /
-Disallow: /checkout
-Disallow: /carrito
-Disallow: /pedido/
-
-Sitemap: https://[TU-DOMINIO]/sitemap.xml

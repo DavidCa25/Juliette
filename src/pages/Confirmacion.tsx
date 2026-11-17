@@ -3,6 +3,7 @@ import { site } from '../config/site'
 import { readJSON } from '../lib/format'
 import { whatsappUrl } from '../lib/whatsapp'
 import { usePageMeta } from '../lib/usePageMeta'
+import { track } from '../lib/analytics'
 import { Arrow, Star, btnPrimary, container } from '../components/ui'
 import { ORDER_KEY, type StoredOrder } from './Checkout'
 
@@ -35,7 +36,7 @@ export default function Confirmacion() {
           Tu pedido quedó registrado. El último paso es enviarnos el resumen por WhatsApp para confirmar disponibilidad, envío y forma de pago. Si incluiste una referencia, adjúntala en el chat.
         </p>
         <div className="flex flex-col sm:flex-row items-center gap-6">
-          <a href={whatsappUrl(order.message)} target="_blank" rel="noopener noreferrer" className={btnPrimary}>
+          <a href={whatsappUrl(order.message)} onClick={() => track('whatsapp_click', { from: 'confirmacion' })} target="_blank" rel="noopener noreferrer" className={btnPrimary}>
             Enviar por WhatsApp <Arrow />
           </a>
           <a href={mail} className="jl-link text-[15px] font-semibold">Prefiero enviarlo por correo</a>

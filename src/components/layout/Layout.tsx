@@ -4,10 +4,14 @@ import { AnnouncementBar, Header } from './Header'
 import { Footer } from './Footer'
 import { CartDrawer } from './CartDrawer'
 import { CookieBanner } from './CookieBanner'
+import { track } from '../../lib/analytics'
 
 /** Lleva al inicio al cambiar de página o a la sección indicada con #ancla. */
 function ScrollManager() {
   const { pathname, hash } = useLocation()
+  useEffect(() => {
+    track('page_view')
+  }, [pathname])
   useEffect(() => {
     if (hash) {
       const id = decodeURIComponent(hash.slice(1))

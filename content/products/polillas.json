@@ -1,0 +1,21 @@
+{
+  "name": "Polillas",
+  "code": "JLT-TB-002",
+  "category": "tote",
+  "collection": "Colección 01",
+  "price": null,
+  "status": "disponible",
+  "featured": true,
+  "order": 2,
+  "personalizable": true,
+  "short": "Lona de algodón · [__] × [__] cm",
+  "description": "Tote bag de lona de algodón con polillas y mariposas pintadas a mano en negro sobre lona natural. Un diseño original de Julietté; cada ejemplar conserva el trazo de su elaboración.",
+  "dimensions": "[__] × [__] cm · asas de [__] cm",
+  "material": "Lona de algodón [gramaje], color natural",
+  "technique": "Pintura textil a mano, fijada con calor",
+  "images": [
+    { "src": "/media/still_polillas.webp", "alt": "Tote bag Polillas completa sobre pedestal" },
+    { "src": "/media/still_polillas_detalle.webp", "alt": "Acercamiento a las polillas pintadas a mano" }
+  ],
+  "video": "/media/polillas_totebag.mp4"
+}

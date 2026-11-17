@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { getProduct, showcaseVideos } from '../data/products'
+import { featuredProducts, showcaseVideos } from '../data/products'
 import { site } from '../config/site'
 import { usePageMeta } from '../lib/usePageMeta'
 import { money } from '../lib/format'
@@ -100,8 +100,6 @@ function MarqueeBand() {
 }
 
 function Collection() {
-  const galaxia = getProduct('galaxia')!
-  const polillas = getProduct('polillas')!
   return (
     <section id="coleccion" className={`${container} pt-[clamp(72px,10vw,150px)] pb-[clamp(40px,5vw,80px)] scroll-mt-6`}>
       <div className="flex flex-wrap justify-between items-end gap-8 mb-[clamp(40px,5vw,72px)]">
@@ -120,8 +118,9 @@ function Collection() {
         </div>
       </div>
       <div className="flex flex-wrap gap-[clamp(16px,2vw,32px)] items-start">
-        <ProductCard to={`/producto/${galaxia.slug}`} image={galaxia.media[0].kind === 'image' ? galaxia.media[0].src : ''} alt="Tote bag Galaxia sobre pedestal, fondo borgoña" name={galaxia.name} meta={galaxia.short} price={galaxia.price} status={galaxia.status} />
-        <ProductCard to={`/producto/${polillas.slug}`} image="/media/still_polillas.webp" alt="Tote bag Polillas sobre pedestal, fondo borgoña" name={polillas.name} meta={polillas.short} price={polillas.price} status={polillas.status} offset="mt-0 sm:mt-[clamp(0px,8vw,120px)]" />
+        {featuredProducts.map((p, i) => (
+          <ProductCard key={p.slug} to={`/producto/${p.slug}`} image={p.cover} alt={`${p.name}, pieza pintada a mano`} name={p.name} meta={p.short} price={p.price} status={p.status} offset={i === 1 ? 'mt-0 sm:mt-[clamp(0px,8vw,120px)]' : ''} />
+        ))}
         <ProductCard to="/disena" image="/media/still_snoopy.webp" alt="Tote bag personalizada sobre pedestal, fondo borgoña" name="A tu medida" meta="Tu idea, con boceto previo" price={null} priceNote={`Desde ${money(site.customFrom)}`} status="bajo-pedido" offset="mt-0 sm:mt-[clamp(0px,3.5vw,50px)]" />
       </div>
     </section>
@@ -129,6 +128,7 @@ function Collection() {
 }
 
 function Videos() {
+  if (showcaseVideos.length === 0) return null
   const [main, ...rest] = showcaseVideos
   return (
     <section id="videos" aria-labelledby="jl-videos-t" className={`${container} pt-[clamp(40px,8vw,120px)] pb-[clamp(72px,10vw,150px)]`}>
@@ -157,7 +157,7 @@ function Videos() {
           </figcaption>
         </figure>
         <div className="flex-[1_1_340px] min-w-0 flex flex-col gap-[clamp(20px,2.5vw,36px)]">
-          {rest.map((v) => (
+          {rest.slice(0, 2).map((v) => (
             <figure key={v.src} className="jl-lift m-0 flex flex-col gap-[14px]">
               <div className="jl-melt-wide aspect-video overflow-hidden">
                 <AutoVideo src={v.src} poster={v.poster} label={v.label} />

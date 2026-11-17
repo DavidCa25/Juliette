@@ -4,7 +4,10 @@
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "cleanUrls": true,
-  "rewrites": [{ "source": "/((?!assets/|media/|fonts/|.*\\..*).*)", "destination": "/index.html" }],
+  "functions": {
+    "api/orders.ts": { "includeFiles": "content/**" }
+  },
+  "rewrites": [{ "source": "/((?!assets/|media/|fonts/|api/|.*\\..*).*)", "destination": "/index.html" }],
   "headers": [
     {
       "source": "/assets/(.*)",

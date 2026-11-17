@@ -1,0 +1,21 @@
+{
+  "name": "Galaxia",
+  "code": "JLT-TB-001",
+  "category": "tote",
+  "collection": "Colección 01",
+  "price": null,
+  "status": "disponible",
+  "featured": true,
+  "order": 1,
+  "personalizable": true,
+  "short": "Lona de algodón · [__] × [__] cm",
+  "description": "Tote bag de lona de algodón con ilustración pintada a mano: trazos en tonos lavanda con detalles en negro y blanco. Por ser una pieza a mano, cada ejemplar tiene variaciones propias.",
+  "dimensions": "[__] × [__] cm · asas de [__] cm",
+  "material": "Lona de algodón [gramaje], color natural",
+  "technique": "Pintura textil a mano, fijada con calor",
+  "images": [
+    { "src": "/media/still_bts.webp", "alt": "Tote bag Galaxia completa sobre pedestal" },
+    { "src": "/media/still_bts_detalle.webp", "alt": "Acercamiento al diseño pintado a mano" }
+  ],
+  "video": "/media/bts_totebag.mp4"
+}

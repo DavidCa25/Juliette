@@ -1,4 +1,4 @@
-import { StrictMode, lazy } from 'react'
+import { StrictMode, Suspense, lazy } from 'react'
 import { createRoot } from 'react-dom/client'
 import { RouterProvider, createBrowserRouter } from 'react-router-dom'
 import './index.css'
@@ -6,6 +6,14 @@ import { Layout } from './components/layout/Layout'
 import { CartProvider } from './state/cart'
 import { ConsentProvider } from './state/consent'
 import Home from './pages/Home'
+import ErrorPage from './pages/ErrorPage'
+import NotFound from './pages/NotFound'
+import { initMonitoring, wrapRouter } from './lib/monitoring'
+
+initMonitoring()
+
+// Si la página cargó bien, se permite otra recarga automática en el futuro.
+window.addEventListener('load', () => window.setTimeout(() => sessionStorage.removeItem('jl-reloaded'), 10000))
 
 // Las páginas secundarias se cargan solo cuando se visitan (archivos más ligeros).
 const Coleccion = lazy(() => import('./pages/Coleccion'))
@@ -14,7 +22,6 @@ const Disena = lazy(() => import('./pages/Disena'))
 const Carrito = lazy(() => import('./pages/Carrito'))
 const Checkout = lazy(() => import('./pages/Checkout'))
 const Confirmacion = lazy(() => import('./pages/Confirmacion'))
-const NotFound = lazy(() => import('./pages/NotFound'))
 const legal = () => import('./pages/Legal')
 const Terminos = lazy(() => legal().then((m) => ({ default: m.Terminos })))
 const Reembolsos = lazy(() => legal().then((m) => ({ default: m.Reembolsos })))
@@ -23,9 +30,21 @@ const Cookies = lazy(() => legal().then((m) => ({ default: m.Cookies })))
 const Envios = lazy(() => legal().then((m) => ({ default: m.Envios })))
 const Preguntas = lazy(() => legal().then((m) => ({ default: m.Preguntas })))
 
-const router = createBrowserRouter([
+const Admin = lazy(() => import('./admin/Admin'))
+
+const router = wrapRouter(createBrowserRouter)([
+  {
+    path: '/admin',
+    errorElement: <ErrorPage />,
+    element: (
+      <Suspense fallback={null}>
+        <Admin />
+      </Suspense>
+    ),
+  },
   {
     element: <Layout />,
+    errorElement: <ErrorPage />,
     children: [
       { path: '/', element: <Home /> },
       { path: '/coleccion', element: <Coleccion /> },

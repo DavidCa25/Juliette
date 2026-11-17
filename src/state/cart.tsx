@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useReducer, useState, type ReactNode } from 'react'
 import type { Design } from '../data/design'
 import { readJSON, writeJSON } from '../lib/format'
+import { track } from '../lib/analytics'
 
 export type ProductLine = {
   id: string
@@ -93,6 +94,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const add = useCallback((line: NewLine) => {
     const id = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`
     dispatch({ type: 'add', line: { ...line, id } as CartLine })
+    track('add_to_cart', line.kind === 'product' ? { kind: 'product', slug: line.slug, option: line.optionId } : { kind: 'custom', surface: line.design.surface, motif: line.design.motif })
     setDrawer(true)
   }, [])
 

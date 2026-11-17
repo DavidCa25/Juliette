@@ -1,0 +1,14 @@
+{
+  "name": "Julietté · Romance hecho arte.",
+  "short_name": "Julietté",
+  "description": "Piezas pintadas a mano y personalizadas.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#fdf6ee",
+  "theme_color": "#82001a",
+  "lang": "es",
+  "icons": [
+    { "src": "/favicon.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/apple-touch-icon.png", "sizes": "180x180", "type": "image/png" }
+  ]
+}

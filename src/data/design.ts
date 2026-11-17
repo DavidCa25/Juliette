@@ -1,4 +1,27 @@
 /** Opciones de la experiencia "Diseña la tuya". */
+export type SurfaceId = 'tote-natural' | 'tote-negra' | 'tote-mezclilla' | 'chamarra' | 'cuadro' | 'agenda'
+export type SurfaceKind = 'tote' | 'chamarra' | 'cuadro' | 'agenda'
+
+export type Surface = {
+  id: SurfaceId
+  name: string
+  sub: string
+  kind: SurfaceKind
+  fabric: string
+  trim: string
+  stitch: string
+  dark: boolean
+}
+
+export const surfaces: Surface[] = [
+  { id: 'tote-natural', name: 'Tote natural', sub: 'Lona de algodón beige', kind: 'tote', fabric: '#f4ecdf', trim: '#eee4d2', stitch: '#d9ccb5', dark: false },
+  { id: 'tote-negra', name: 'Tote negra', sub: 'Lona de algodón negra', kind: 'tote', fabric: '#2b2626', trim: '#231f1f', stitch: '#4a4242', dark: true },
+  { id: 'tote-mezclilla', name: 'Tote de mezclilla', sub: 'Mezclilla azul', kind: 'tote', fabric: '#557597', trim: '#4a6a8c', stitch: '#d9a441', dark: true },
+  { id: 'chamarra', name: 'Chamarra', sub: 'Mezclilla, pintada en la espalda', kind: 'chamarra', fabric: '#5b7ca1', trim: '#4b6b90', stitch: '#d9a441', dark: true },
+  { id: 'cuadro', name: 'Cuadro', sub: 'Lienzo en bastidor', kind: 'cuadro', fabric: '#fbf7f0', trim: '#b08a5e', stitch: '#e7dfd2', dark: false },
+  { id: 'agenda', name: 'Agenda', sub: 'Portada de tela pintada', kind: 'agenda', fabric: '#efe4d2', trim: '#e0d1b9', stitch: '#c9b79a', dark: false },
+]
+
 export type MotifId = 'cerezas' | 'celestial' | 'floral' | 'mariposas' | 'solo-texto' | 'mi-idea'
 export type PaletteId = 'borgona' | 'lavanda' | 'tinta' | 'primavera'
 export type FontId = 'serif' | 'script' | 'moderna'
@@ -6,6 +29,7 @@ export type PlacementId = 'arriba' | 'centro' | 'abajo'
 export type SizeId = 's' | 'm' | 'l'
 
 export type Design = {
+  surface: SurfaceId
   motif: MotifId
   palette: PaletteId
   text: string
@@ -21,6 +45,7 @@ export type Design = {
 }
 
 export const defaultDesign: Design = {
+  surface: 'tote-natural',
   motif: 'cerezas',
   palette: 'borgona',
   text: '',
@@ -74,16 +99,18 @@ export function describeDesign(d: Design) {
   const m = motifs.find((x) => x.id === d.motif)?.name ?? d.motif
   const p = palettes.find((x) => x.id === d.palette)?.name ?? d.palette
   const f = fonts.find((x) => x.id === d.font)?.name ?? d.font
+  const sf = surfaces.find((x) => x.id === d.surface)
   const lines = [
+    `Pieza: ${sf ? `${sf.name} (${sf.sub.toLowerCase()})` : d.surface}`,
     `Motivo: ${m}`,
     `Paleta: ${p}`,
     `Tamaño: ${sizes.find((s) => s.id === d.size)?.name}`,
     d.text ? `Texto: "${d.text}" (${f}, ${d.placement})` : 'Sin texto',
-    d.back ? 'Frente y reverso' : 'Solo frente',
+    sf?.kind === 'cuadro' || sf?.kind === 'chamarra' ? '' : d.back ? 'Frente y reverso' : 'Solo frente',
   ]
   if (d.occasion) lines.push(`Ocasión: ${d.occasion}`)
   if (d.date) lines.push(`Fecha deseada: ${d.date}`)
   if (d.notes) lines.push(`Notas: ${d.notes}`)
   if (d.reference) lines.push('Incluye imagen de referencia (la envío en el chat)')
-  return lines
+  return lines.filter(Boolean)
 }
