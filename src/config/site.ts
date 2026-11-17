@@ -24,6 +24,16 @@ export const site = {
   leadDays: { ready: '[X]', custom: '[X]' },
   /** Costo de envío. null = se cotiza por WhatsApp */
   shippingCost: null as number | null,
+  /** Envío gratis a partir de este monto. null = no aplica */
+  freeShippingFrom: null as number | null,
+  /** Días hábiles para enviar una pieza lista tras el pago */
+  readyShipDays: '[X]',
+  /** Precio "desde" de una pieza a medida. null = se muestra [PRECIO] */
+  customFrom: null as number | null,
+  /** Fecha del próximo lanzamiento, como texto (ej. "Diciembre 2026") */
+  nextDrop: '[FECHA]',
+  /** Plazos de las políticas */
+  policy: { returnDays: 7, damageHours: 48, refundDays: 10, privacyDays: 20, designFee: '[MONTO o %]' },
   legal: {
     owner: '[NOMBRE O RAZÓN SOCIAL]',
     taxId: '[RFC / ID FISCAL]',

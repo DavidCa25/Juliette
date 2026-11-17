@@ -1,6 +1,8 @@
 import { Link } from 'react-router-dom'
 import { products } from '../data/products'
 import { usePageMeta } from '../lib/usePageMeta'
+import { money } from '../lib/format'
+import { site } from '../config/site'
 import { ProductCard } from '../components/home/ProductCard'
 import { Arrow, btnLight, container } from '../components/ui'
 
@@ -32,7 +34,7 @@ export default function Coleccion() {
               offset={i % 2 ? 'mt-0 sm:mt-[clamp(0px,8vw,120px)]' : ''}
             />
           ))}
-          <ProductCard to="/disena" image="/media/still_snoopy.webp" alt="Tote bag personalizada sobre pedestal" name="A tu medida" meta="Tu idea, con boceto previo" price={null} priceNote="Desde [PRECIO]" status="bajo-pedido" offset="mt-0 sm:mt-[clamp(0px,3.5vw,50px)]" />
+          <ProductCard to="/disena" image="/media/still_snoopy.webp" alt="Tote bag personalizada sobre pedestal" name="A tu medida" meta="Tu idea, con boceto previo" price={null} priceNote={`Desde ${money(site.customFrom)}`} status="bajo-pedido" offset="mt-0 sm:mt-[clamp(0px,3.5vw,50px)]" />
         </div>
         <div className="mt-[clamp(56px,7vw,100px)] flex flex-wrap items-center justify-between gap-6 border-t border-crema/40 pt-8">
           <p className="m-0 font-display font-light text-[clamp(30px,3.4vw,48px)] leading-tight">

@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom'
 import { getProduct, showcaseVideos } from '../data/products'
 import { site } from '../config/site'
 import { usePageMeta } from '../lib/usePageMeta'
+import { money } from '../lib/format'
 import { Arrow, AutoVideo, Star, btnLight, btnPrimary, container } from '../components/ui'
 import { ProductCard } from '../components/home/ProductCard'
 import { ProcesoArte } from '../components/home/ProcesoArte'
@@ -121,7 +122,7 @@ function Collection() {
       <div className="flex flex-wrap gap-[clamp(16px,2vw,32px)] items-start">
         <ProductCard to={`/producto/${galaxia.slug}`} image={galaxia.media[0].kind === 'image' ? galaxia.media[0].src : ''} alt="Tote bag Galaxia sobre pedestal, fondo borgoña" name={galaxia.name} meta={galaxia.short} price={galaxia.price} status={galaxia.status} />
         <ProductCard to={`/producto/${polillas.slug}`} image="/media/still_polillas.webp" alt="Tote bag Polillas sobre pedestal, fondo borgoña" name={polillas.name} meta={polillas.short} price={polillas.price} status={polillas.status} offset="mt-0 sm:mt-[clamp(0px,8vw,120px)]" />
-        <ProductCard to="/disena" image="/media/still_snoopy.webp" alt="Tote bag personalizada sobre pedestal, fondo borgoña" name="A tu medida" meta="Tu idea, con boceto previo" price={null} priceNote="Desde [PRECIO]" status="bajo-pedido" offset="mt-0 sm:mt-[clamp(0px,3.5vw,50px)]" />
+        <ProductCard to="/disena" image="/media/still_snoopy.webp" alt="Tote bag personalizada sobre pedestal, fondo borgoña" name="A tu medida" meta="Tu idea, con boceto previo" price={null} priceNote={`Desde ${money(site.customFrom)}`} status="bajo-pedido" offset="mt-0 sm:mt-[clamp(0px,3.5vw,50px)]" />
       </div>
     </section>
   )

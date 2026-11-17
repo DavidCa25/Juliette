@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { site } from '../config/site'
 import { useConsent } from '../state/consent'
 import { usePageMeta } from '../lib/usePageMeta'
+import { money } from '../lib/format'
 import { container } from '../components/ui'
 
 const L = site.legal
@@ -67,22 +68,22 @@ export function Reembolsos() {
     <LegalPage eyebrow="Legal" title={<>Cambios y <span className="italic">reembolsos</span></>} intro="Queremos que tu pieza llegue tal como la imaginaste. Esta política explica qué hacer si algo no sale como esperabas.">
       <h2>Piezas de colección</h2>
       <ul>
-        <li>Puedes solicitar un cambio o reembolso dentro de los [7] días naturales posteriores a la entrega, siempre que la pieza no haya sido usada, lavada ni alterada y conserve su etiqueta.</li>
+        <li>Puedes solicitar un cambio o reembolso dentro de los {site.policy.returnDays} días naturales posteriores a la entrega, siempre que la pieza no haya sido usada, lavada ni alterada y conserve su etiqueta.</li>
         <li>Los gastos de envío de la devolución corren por cuenta del cliente, salvo que la pieza presente un defecto de fabricación.</li>
       </ul>
       <h2>Piezas personalizadas</h2>
       <ul>
         <li>Por estar hechas especialmente para ti, no aceptan cambios ni reembolsos una vez aprobado el boceto, salvo defecto de fabricación.</li>
-        <li>Si cancelas antes de aprobar el boceto, reembolsamos el anticipo menos el valor del trabajo de diseño realizado ([MONTO o %]).</li>
+        <li>Si cancelas antes de aprobar el boceto, reembolsamos el anticipo menos el valor del trabajo de diseño realizado ({site.policy.designFee}).</li>
         <li>Las variaciones propias de la pintura a mano no se consideran defecto.</li>
       </ul>
       <h2>Defectos o daños en el envío</h2>
-      <p>Si tu pieza llega dañada o con un defecto, escríbenos dentro de las [48] horas siguientes a la entrega con fotografías del empaque y de la pieza. Te ofreceremos reparación, reposición o reembolso.</p>
+      <p>Si tu pieza llega dañada o con un defecto, escríbenos dentro de las {site.policy.damageHours} horas siguientes a la entrega con fotografías del empaque y de la pieza. Te ofreceremos reparación, reposición o reembolso.</p>
       <h2>Cómo solicitarlo</h2>
       <ol className="pl-5 list-decimal">
         <li>Escríbenos por WhatsApp {site.whatsappDisplay} o a {site.email} con tu número de pedido.</li>
         <li>Te confirmaremos si aplica y los pasos para el envío.</li>
-        <li>Al recibir y revisar la pieza, el reembolso se procesa en un plazo de [10] días hábiles por el mismo medio de pago.</li>
+        <li>Al recibir y revisar la pieza, el reembolso se procesa en un plazo de {site.policy.refundDays} días hábiles por el mismo medio de pago.</li>
       </ol>
     </LegalPage>
   )
@@ -112,7 +113,7 @@ export function Privacidad() {
       <h2>Con quién los compartimos</h2>
       <p>Con proveedores necesarios para operar: mensajería, paquetería, pasarela de pago, alojamiento web y, si las aceptas, herramientas de analítica. No vendemos tus datos.</p>
       <h2>Tus derechos</h2>
-      <p>Puedes acceder, rectificar, cancelar u oponerte al uso de tus datos, así como revocar tu consentimiento, escribiendo a {site.email}. Responderemos en un plazo máximo de [20] días hábiles.</p>
+      <p>Puedes acceder, rectificar, cancelar u oponerte al uso de tus datos, así como revocar tu consentimiento, escribiendo a {site.email}. Responderemos en un plazo máximo de {site.policy.privacyDays} días hábiles.</p>
       <h2>Almacenamiento en tu dispositivo</h2>
       <p>Tu carrito, tu diseño y tus preferencias se guardan en tu propio navegador. Las imágenes de referencia que subes en "Diseña la tuya" no se envían a ningún servidor hasta que tú nos las compartes.</p>
     </LegalPage>
@@ -152,11 +153,14 @@ export function Envios() {
       <p>Enviamos a {site.shippingZone}. También puedes recoger tu pieza en {site.pickupPoint} con cita previa.</p>
       <h2>Tiempos</h2>
       <ul>
-        <li>Piezas listas: se envían en [X] días hábiles tras confirmar el pago.</li>
+        <li>Piezas listas: se envían en {site.readyShipDays} días hábiles tras confirmar el pago.</li>
         <li>Piezas personalizadas: {site.leadDays.custom} días hábiles de elaboración tras aprobar el boceto, más el tiempo de envío.</li>
       </ul>
       <h2>Costos</h2>
-      <p>El costo depende del destino y se confirma antes de pagar. [Envío gratis a partir de [MONTO], si aplica].</p>
+      <p>
+        El costo depende del destino y se confirma antes de pagar.
+        {site.freeShippingFrom !== null && ` Envío gratis a partir de ${money(site.freeShippingFrom)}.`}
+      </p>
       <h2>Empaque</h2>
       <p>Cada pieza viaja protegida, con su etiqueta, tarjeta de bienvenida, guía de cuidados y nota de agradecimiento. Pasa por una revisión de calidad antes de salir.</p>
     </LegalPage>

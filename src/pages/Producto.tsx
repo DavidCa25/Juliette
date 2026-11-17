@@ -240,7 +240,7 @@ export default function Producto() {
         <div className="grid grid-cols-[repeat(auto-fit,minmax(260px,1fr))] gap-[clamp(24px,3vw,44px)]">
           <Link to="/disena" className="flex flex-col gap-[18px]">
             <div className="jl-zoom aspect-[4/5] rounded-b-full bg-vino"><img src="/media/still_snoopy.webp" alt="Pieza personalizada sobre pedestal" loading="lazy" className="w-full h-full object-cover block" /></div>
-            <div className="flex justify-between gap-3 border-t border-borgona pt-[14px]"><span className="font-display text-[30px] leading-none">A tu medida</span><span className="text-[15px] font-semibold">Desde [PRECIO]</span></div>
+            <div className="flex justify-between gap-3 border-t border-borgona pt-[14px]"><span className="font-display text-[30px] leading-none">A tu medida</span><span className="text-[15px] font-semibold">Desde {money(site.customFrom)}</span></div>
           </Link>
           {related.map((p) => (
             <Link key={p.slug} to={`/producto/${p.slug}`} className="flex flex-col gap-[18px]">
@@ -252,7 +252,7 @@ export default function Producto() {
             <div className="jl-stripes aspect-[4/5] rounded-full flex items-center justify-center">
               <div className="w-1/2 aspect-square rounded-full bg-crema flex items-center justify-center"><img src="/media/isotipo_burdeos_sm.png" alt="" className="w-[44%] h-auto block" /></div>
             </div>
-            <div className="flex justify-between gap-3 border-t border-borgona pt-[14px]"><span className="font-display text-[30px] leading-none">Próximo diseño</span><span className="text-[15px] font-semibold">[FECHA]</span></div>
+            <div className="flex justify-between gap-3 border-t border-borgona pt-[14px]"><span className="font-display text-[30px] leading-none">Próximo diseño</span><span className="text-[15px] font-semibold">{site.nextDrop}</span></div>
           </div>
         </div>
       </section>
