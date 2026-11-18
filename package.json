@@ -13,6 +13,8 @@
     "dev:full": "vercel dev"
   },
   "dependencies": {
+    "@neon/config": "^1.14.3",
+    "@neon/env": "^2.1.6",
     "@neondatabase/serverless": "^1.2.1",
     "@sentry/node": "^11.14.0",
     "@sentry/react": "^11.14.0",

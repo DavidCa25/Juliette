@@ -2,7 +2,8 @@
 import { readFileSync } from 'node:fs'
 import { neon } from '@neondatabase/serverless'
 
-const url = process.env.DATABASE_URL
+// Los cambios de esquema van por la conexión directa (sin pooler) si existe
+const url = process.env.DATABASE_URL_UNPOOLED || process.env.DATABASE_URL
 if (!url) {
   console.log('[migrate] Sin DATABASE_URL: se omite la base de datos.')
   process.exit(0)
