@@ -18,7 +18,7 @@ export function initMonitoring() {
     environment: import.meta.env.VITE_SENTRY_ENV || import.meta.env.MODE,
     release: import.meta.env.VITE_RELEASE || undefined,
     dataCollection: { userInfo: false, cookies: false, httpHeaders: false, httpBodies: [] },
-    tracesSampleRate: 0.1,
+    tracesSampleRate: import.meta.env.PROD ? 0.1 : 1.0,
     integrations: [
       Sentry.reactRouterV6BrowserTracingIntegration({ useEffect, useLocation, useNavigationType, createRoutesFromChildren, matchRoutes }),
     ],

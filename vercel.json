@@ -7,7 +7,7 @@
   "functions": {
     "api/orders.ts": { "includeFiles": "content/**" }
   },
-  "rewrites": [{ "source": "/((?!assets/|media/|fonts/|api/|.*\\..*).*)", "destination": "/index.html" }],
+  "rewrites": [{ "source": "/((?!assets/|media/|fonts/|api/|.*\\..*).*)", "destination": "/" }],
   "headers": [
     {
       "source": "/assets/(.*)",
