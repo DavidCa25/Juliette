@@ -4,6 +4,7 @@ import { hasDb, q } from './_lib/db.js'
 import { catalog } from './_lib/catalog.js'
 import { reportServer } from './_lib/monitor.js'
 import { sendOrderEmails } from './_lib/email.js'
+import { decodeImage, putObject } from './_lib/r2.js'
 
 /**
  * Registra un pedido desde el checkout. Los precios se recalculan con el catálogo publicado.
@@ -27,7 +28,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (!hasDb()) return res.status(503).json({ error: 'Pedidos en línea no disponibles.' })
 
   const raw = typeof req.body === 'string' ? req.body : JSON.stringify(req.body ?? {})
-  if (raw.length > 60_000) return res.status(413).json({ error: 'Pedido demasiado grande.' })
+  if (raw.length > 3_000_000) return res.status(413).json({ error: 'Pedido demasiado grande.' })
   const b = (typeof req.body === 'string' ? JSON.parse(req.body) : req.body) as Record<string, unknown>
 
   // Campo trampa para bots: las personas no lo ven ni lo llenan
@@ -58,11 +59,41 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const unitPrice = p && p.price !== null && optionId === 'sin' ? p.price : null
       return { kind: 'product', slug, name: p?.name ?? str(i.name, 80), optionId, optionLabel: str(i.optionLabel, 80), idea: str(i.idea, 400) || null, qty, unitPrice }
     }
-    return { kind: 'custom', name: str(i.name, 80) || 'Pieza a medida', design: i.design && typeof i.design === 'object' ? i.design : null, qty, unitPrice: null }
+    const details = Array.isArray(i.details) ? i.details.slice(0, 14).map((d) => str(d, 220)).filter(Boolean) : []
+    return {
+      kind: 'custom',
+      name: str(i.name, 80) || 'Pieza a medida',
+      design: i.design && typeof i.design === 'object' ? { ...(i.design as Record<string, unknown>), reference: null } : null,
+      details,
+      qty,
+      unitPrice: null,
+      previewUrl: null as string | null,
+      referenceUrl: null as string | null,
+      _preview: decodeImage(i.preview),
+      _reference: decodeImage(i.reference),
+    }
   })
   const subtotal = items.every((i) => i.unitPrice !== null) ? items.reduce((n, i) => n + (i.unitPrice ?? 0) * i.qty, 0) : null
 
   const id = newId()
+
+  // Boceto y referencia de las piezas a medida: se guardan en R2 para verlos en el panel y en los correos
+  await Promise.all(
+    items.map(async (it, n) => {
+      if (it.kind !== 'custom') return
+      type Up = { bytes: Uint8Array; type: string; ext: string } | null | undefined
+      const c = it as { previewUrl?: string | null; referenceUrl?: string | null; _preview?: Up; _reference?: Up }
+      try {
+        if (c._preview) c.previewUrl = await putObject(`pedidos/${id}/boceto-${n + 1}.${c._preview.ext}`, c._preview.bytes, c._preview.type)
+        if (c._reference) c.referenceUrl = await putObject(`pedidos/${id}/referencia-${n + 1}.${c._reference.ext}`, c._reference.bytes, c._reference.type)
+      } catch (e) {
+        await reportServer(e, { route: 'orders/upload', id })
+      }
+      delete c._preview
+      delete c._reference
+    }),
+  )
+
   try {
     await q(
       `INSERT INTO orders (id, customer_name, phone, email, delivery, address, payment, gift, items, subtotal, total, visitor_id, source)

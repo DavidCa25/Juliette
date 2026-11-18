@@ -2,7 +2,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node'
 import { requireAdmin } from '../_lib/auth.js'
 import { hasDb, q } from '../_lib/db.js'
 import { reportServer } from '../_lib/monitor.js'
-import { sendStatusEmail } from '../_lib/email.js'
+import { sendStatusEmail, type MailItem } from '../_lib/email.js'
 
 /**
  * GET   → pedidos (filtros: status, q, limit).
@@ -38,7 +38,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (req.method === 'PATCH') {
       const b = (typeof req.body === 'string' ? JSON.parse(req.body) : req.body) as { id?: string; status?: string; payment_status?: string; notes?: string; notify?: boolean }
       if (!b?.id) return res.status(400).json({ error: 'Falta el número de pedido.' })
-      const before = await q<{ status: string; customer_name: string; email: string }>(`SELECT status, customer_name, email FROM orders WHERE id = $1`, [b.id])
+      const before = await q<{ status: string; customer_name: string; email: string; items: MailItem[] }>(`SELECT status, customer_name, email, items FROM orders WHERE id = $1`, [b.id])
       if (!before.length) return res.status(404).json({ error: 'Pedido no encontrado.' })
       const status = b.status && STATUSES.includes(b.status) ? b.status : null
       const pay = b.payment_status && PAYMENT.includes(b.payment_status) ? b.payment_status : null
@@ -56,7 +56,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       if (!rows.length) return res.status(404).json({ error: 'Pedido no encontrado.' })
       let emailed = false
       if (status && status !== before[0].status && b.notify !== false) {
-        emailed = await sendStatusEmail({ id: b.id, customer_name: before[0].customer_name, email: before[0].email }, status)
+        emailed = await sendStatusEmail({ id: b.id, customer_name: before[0].customer_name, email: before[0].email, items: before[0].items }, status)
       }
       return res.status(200).json({ order: rows[0], emailed })
     }

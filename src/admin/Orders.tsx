@@ -45,16 +45,29 @@ function OrderDetail({ order, onSaved }: { order: Order; onSaved: (o: Order) => 
         <ul className="m-0 p-0 list-none border-b border-borgona/25">
           {order.items.map((i, k) => (
             <li key={k} className="flex justify-between gap-4 py-3 border-t border-borgona/25 text-[14px]">
-              <span>
+              {i.previewUrl && (
+                <a href={i.previewUrl} target="_blank" rel="noopener noreferrer" className="flex-none" title="Abrir boceto">
+                  <img src={i.previewUrl} alt="Boceto del cliente" className="w-[72px] h-auto rounded-t-full rounded-b-[12px] bg-vino block" />
+                </a>
+              )}
+              <span className="flex-1 min-w-0">
                 <strong>{i.qty} × {i.name}</strong>
                 {i.optionLabel && <span> · {i.optionLabel}</span>}
                 {i.idea && <span className="block text-[13px]">“{i.idea}”</span>}
-                {i.design && (
+                {i.details?.length ? (
+                  <span className="block text-[12px] leading-[1.7] opacity-85 mt-1">{i.details.map((d) => <span key={d} className="block">{d}</span>)}</span>
+                ) : i.design && (
                   <span className="block text-[12px] opacity-80">
                     {Object.entries(i.design)
                       .filter(([k2, v]) => v && !['reference'].includes(k2))
                       .map(([k2, v]) => `${k2}: ${String(v)}`)
                       .join(' · ')}
+                  </span>
+                )}
+                {(i.previewUrl || i.referenceUrl) && (
+                  <span className="flex flex-wrap gap-4 mt-2 text-[12px] font-semibold">
+                    {i.previewUrl && <a className="jl-link" href={i.previewUrl} target="_blank" rel="noopener noreferrer">Abrir boceto</a>}
+                    {i.referenceUrl && <a className="jl-link" href={i.referenceUrl} target="_blank" rel="noopener noreferrer">Ver referencia del cliente</a>}
                   </span>
                 )}
               </span>

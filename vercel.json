@@ -5,7 +5,8 @@
   "outputDirectory": "dist",
   "cleanUrls": true,
   "functions": {
-    "api/orders.ts": { "includeFiles": "content/**" }
+    "api/orders.ts": { "includeFiles": "content/**" },
+    "api/admin/orders.ts": { "includeFiles": "content/**" }
   },
   "redirects": [{ "source": "/disena", "destination": "/design", "permanent": true }],
   "rewrites": [

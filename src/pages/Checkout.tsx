@@ -108,7 +108,7 @@ export default function Checkout() {
     // Registra el pedido en la base de datos (si está configurada). Si falla, el pedido sigue por WhatsApp.
     try {
       const ctrl = new AbortController()
-      const t = window.setTimeout(() => ctrl.abort(), 8000)
+      const t = window.setTimeout(() => ctrl.abort(), 20000)
       const r = await fetch('/api/orders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -123,7 +123,16 @@ export default function Checkout() {
           items: lines.map((l) =>
             l.kind === 'product'
               ? { kind: 'product', slug: l.slug, name: l.name, optionId: l.optionId, optionLabel: l.optionLabel, idea: l.idea, qty: l.qty }
-              : { kind: 'custom', name: l.name, qty: l.qty, design: { ...l.design, reference: l.design.reference ? 'adjunta en el chat' : null } },
+              : {
+                  kind: 'custom',
+                  name: l.name,
+                  qty: l.qty,
+                  design: { ...l.design, reference: null },
+                  details: describeDesign({ ...l.design, reference: null }),
+                  // Boceto y referencia viajan como imagen para guardarse con el pedido
+                  preview: l.image?.startsWith('data:image/') ? l.image : null,
+                  reference: l.design.reference?.startsWith('data:image/') ? l.design.reference : null,
+                },
           ),
           visitorId: visitorId(),
           source: campaign() ?? null,
