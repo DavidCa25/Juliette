@@ -23,7 +23,20 @@ export const surfaces: Surface[] = [
   { id: 'agenda', name: 'Agenda', sub: 'Portada de tela pintada', kind: 'agenda', fabric: '#efe4d2', trim: '#e0d1b9', stitch: '#c9b79a', dark: false },
 ]
 
-export type MotifId = 'cerezas' | 'celestial' | 'floral' | 'mariposas' | 'solo-texto' | 'mi-idea'
+export type MotifId = 'cerezas' | 'celestial' | 'floral' | 'mariposas' | 'solo-texto' | 'mi-idea' | 'lienzo'
+
+/** Trazos pintados a mano por el cliente, en coordenadas de la vista previa (600 × 740). */
+export type BrushId = 'pincel' | 'plumon' | 'acuarela' | 'seca' | 'aerosol' | 'caligrafia' | 'marcador' | 'goma'
+export type StickerId =
+  | 'estrella' | 'destello' | 'estrella5' | 'corazon' | 'corazon-linea' | 'cereza' | 'flor' | 'margarita'
+  | 'hoja' | 'mariposa' | 'luna' | 'sol' | 'nube' | 'mono' | 'nota' | 'gota' | 'galaxia'
+/** @deprecated nombre anterior de los sellos */
+export type StampKind = StickerId
+export type Stroke =
+  | { t: 'line'; c: string; w: number; p: number[]; b?: BrushId; o?: number }
+  /** k: un sticker propio de Julietté o uno de la biblioteca ("categoria/nombre") */
+  | { t: 'stamp'; c: string; k: StickerId | string; x: number; y: number; s: number; r?: number; f?: boolean }
+export const MAX_POINTS = 14000
 export type PaletteId = 'borgona' | 'lavanda' | 'tinta' | 'primavera'
 export type FontId = 'serif' | 'script' | 'moderna'
 export type PlacementId = 'arriba' | 'centro' | 'abajo'
@@ -45,6 +58,8 @@ export type Design = {
   fit: string
   /** Imagen de referencia (data URL reducido) */
   reference: string | null
+  /** Lo que el cliente pintó a mano sobre la pieza */
+  strokes: Stroke[]
 }
 
 export const defaultDesign: Design = {
@@ -61,6 +76,7 @@ export const defaultDesign: Design = {
   notes: '',
   fit: '',
   reference: null,
+  strokes: [],
 }
 
 export const motifs: { id: MotifId; name: string; sub: string }[] = [
@@ -69,6 +85,7 @@ export const motifs: { id: MotifId; name: string; sub: string }[] = [
   { id: 'floral', name: 'Floral', sub: 'Flores sueltas y hojas' },
   { id: 'mariposas', name: 'Alas', sub: 'Mariposas y polillas' },
   { id: 'solo-texto', name: 'Solo palabras', sub: 'Tu frase como protagonista' },
+  { id: 'lienzo', name: 'Dibújala tú', sub: 'Pinta con tu dedo o mouse' },
   { id: 'mi-idea', name: 'Mi propia idea', sub: 'Sube una referencia' },
 ]
 
@@ -125,6 +142,7 @@ export function describeDesign(d: Design) {
   if (d.occasion) lines.push(`Ocasión: ${d.occasion}`)
   if (d.date) lines.push(`Fecha deseada: ${d.date}`)
   if (d.notes) lines.push(`Notas: ${d.notes}`)
+  if (d.strokes?.length) lines.push(`Trazos a mano: ${d.strokes.length} (se ven en el boceto)`)
   if (d.reference) lines.push('Incluye imagen de referencia (la envío en el chat)')
   return lines.filter(Boolean)
 }

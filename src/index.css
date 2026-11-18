@@ -110,6 +110,7 @@
   .jl-svg-pop { transform-box: fill-box; transform-origin: center; animation: jl-pop .8s var(--ease-expo) both; }
   .jl-studio { background: radial-gradient(ellipse 60% 55% at 50% 40%, #7a3a41 0%, #5f272d 60%, #4d1d23 100%); }
 
+  .jl-range { accent-color: var(--color-borgona); height: 28px; cursor: pointer; }
   .jl-field { width: 100%; background: transparent; border: 0; border-bottom: 1px solid var(--color-borgona); padding: 14px 0; font: inherit; font-size: 15px; color: var(--color-borgona); outline: none; border-radius: 0; }
   .jl-field:focus { border-bottom-width: 2px; padding-bottom: 13px; }
   .jl-label { font-size: 12px; letter-spacing: 2.5px; text-transform: uppercase; font-weight: 600; }

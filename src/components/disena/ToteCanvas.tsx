@@ -1,7 +1,8 @@
-import { forwardRef, useId } from 'react'
+import { forwardRef, useCallback, useId, useRef, useState, type PointerEvent as RPointerEvent } from 'react'
 import { Isotipo } from '../brand/Isotipo'
 import { STAR_PATH } from '../ui'
-import { fonts, palettes, sizes, surfaces, type Design, type MotifId, type Surface, type SurfaceKind } from '../../data/design'
+import { MAX_POINTS, fonts, palettes, sizes, surfaces, type BrushId, type Design, type MotifId, type StickerId, type Stroke, type Surface, type SurfaceKind } from '../../data/design'
+import { LiveStroke, PaintDefs, StrokesLayer } from './paint'
 
 const CREAM = '#fdf6ee'
 
@@ -80,6 +81,19 @@ export function MotifArt({ motif, colors, reference, onDark = false }: { motif: 
           <path d="M-70 -110 C-20 -130 60 -120 100 -70" stroke={c3} strokeWidth={1.6} strokeDasharray="2 7" fill="none" strokeLinecap="round" />
         </g>
       )
+    case 'lienzo':
+      // Muestra para la tarjeta "Dibújala tú": un trazo libre con un pincel
+      return (
+        <g fill="none" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M-96 40 C-70 -40 -30 -70 0 -30 C26 6 46 40 76 -6 C92 -30 100 -56 92 -86" stroke={c1} strokeWidth={14} />
+          <path d="M-80 86 C-40 64 10 92 60 70" stroke={c2} strokeWidth={9} />
+          <g transform="translate(70 -96) rotate(38)">
+            <rect x={-7} y={0} width={14} height={92} rx={7} fill="#b2875a" stroke="none" />
+            <rect x={-8} y={-10} width={16} height={18} rx={3} fill="#c9ccd1" stroke="none" />
+            <path d="M-8 -10 Q0 -42 8 -10 Z" fill={c1} stroke="none" />
+          </g>
+        </g>
+      )
     case 'mi-idea':
       return reference ? (
         <g>
@@ -132,7 +146,7 @@ function bodyShape(kind: SurfaceKind) {
   return <path d={TOTE_BODY} />
 }
 
-type Ids = Record<'rib' | 'weave' | 'noise' | 'twill' | 'grain' | 'side' | 'top' | 'soft' | 'paint' | 'clip' | 'wood' | 'pages' | 'strap' | 'elastic', string>
+type Ids = Record<'water' | 'dry' | 'rib' | 'weave' | 'noise' | 'twill' | 'grain' | 'side' | 'top' | 'soft' | 'paint' | 'clip' | 'wood' | 'pages' | 'strap' | 'elastic', string>
 
 /** Etiqueta tejida con el isotipo real, cosida a la pieza. */
 function BrandLabel({ x, y, w, h, bg, fg, stitch, r = 0 }: { x: number; y: number; w: number; h: number; bg: string; fg: string; stitch: string; r?: number }) {
@@ -391,11 +405,160 @@ function SurfaceBase({ s, showPedestal, id }: { s: Surface; showPedestal: boolea
   )
 }
 
+/** Herramienta activa del estudio de pintura. */
+export type DrawTool = {
+  mode: 'pincel' | 'sticker'
+  brush: BrushId
+  color: string
+  size: number
+  opacity: number
+  sticker: StickerId | string
+  stickerSize: number
+  rotation: number
+  mirror: boolean
+  onAdd: (strokes: Stroke[]) => void
+  /** Sticker seleccionado para moverlo, girarlo o cambiar su tamaño (índice en design.strokes) */
+  selected?: number | null
+  onSelect?: (i: number | null) => void
+  /** Cambia un sticker ya colocado (null lo elimina) */
+  onEdit?: (i: number, patch: Partial<Extract<Stroke, { t: 'stamp' }>> | null) => void
+  /** Se llama al empezar a arrastrar, para que se pueda deshacer el movimiento */
+  onEditStart?: () => void
+}
+
+/** Puntos de control del sticker seleccionado: asa de tamaño/giro y botón de borrar. */
+function stickerHandles(st: Extract<Stroke, { t: 'stamp' }>) {
+  const half = 13 * st.s + 6
+  const r = ((st.r ?? 0) * Math.PI) / 180
+  const rot = (x: number, y: number) => [st.x + x * Math.cos(r) - y * Math.sin(r), st.y + x * Math.sin(r) + y * Math.cos(r)]
+  return { half, handle: rot(half, -half), remove: rot(-half, -half), corners: [rot(-half, -half), rot(half, -half), rot(half, half), rot(-half, half)] }
+}
+
 /** Vista previa de la pieza: se actualiza en vivo con cada decisión. */
-export const ToteCanvas = forwardRef<SVGSVGElement, { design: Design; showPedestal?: boolean }>(function ToteCanvas({ design, showPedestal = true }, ref) {
+export const ToteCanvas = forwardRef<SVGSVGElement, { design: Design; showPedestal?: boolean; draw?: DrawTool }>(function ToteCanvas({ design, showPedestal = true, draw }, ref) {
+  // Pintar a mano: los trazos se guardan en coordenadas de la vista previa
+  const local = useRef<SVGSVGElement | null>(null)
+  const setRefs = useCallback(
+    (el: SVGSVGElement | null) => {
+      local.current = el
+      if (typeof ref === 'function') ref(el)
+      else if (ref) ref.current = el
+    },
+    [ref],
+  )
+  const [live, setLive] = useState<number[] | null>(null)
+  const used = (design.strokes ?? []).reduce((n, st) => n + (st.t === 'line' ? st.p.length / 2 : 1), 0)
+  const toPoint = (e: RPointerEvent<SVGSVGElement>) => {
+    const svg = local.current
+    const m = svg?.getScreenCTM()
+    if (!svg || !m) return null
+    const pt = svg.createSVGPoint()
+    pt.x = e.clientX
+    pt.y = e.clientY
+    const r = pt.matrixTransform(m.inverse())
+    return [Math.round(r.x * 10) / 10, Math.round(r.y * 10) / 10]
+  }
+  const mirrorX = (x: number) => Math.round((2 * (surfaces.find((x2) => x2.id === design.surface)?.kind === 'agenda' ? 312 : 300) - x) * 10) / 10
+  type Drag = { kind: 'move'; i: number; dx: number; dy: number } | { kind: 'scale'; i: number; s0: number; r0: number; d0: number; a0: number }
+  const drag = useRef<Drag | null>(null)
+  const stamps = (design.strokes ?? []).map((st, i) => ({ st, i })).filter((x): x is { st: Extract<Stroke, { t: 'stamp' }>; i: number } => x.st.t === 'stamp')
+  const hitSticker = (x: number, y: number) => {
+    for (let k = stamps.length - 1; k >= 0; k--) {
+      const { st, i } = stamps[k]
+      if (Math.hypot(x - st.x, y - st.y) <= 13 * st.s + 4) return i
+    }
+    return null
+  }
+  const capture = (e: RPointerEvent<SVGSVGElement>) => {
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId)
+    } catch {
+      /* algunos navegadores no permiten capturar este puntero */
+    }
+  }
+  const onDown = (e: RPointerEvent<SVGSVGElement>) => {
+    if (!draw) return
+    const p = toPoint(e)
+    if (!p) return
+    e.preventDefault()
+    if (draw.mode === 'sticker') {
+      const sel = draw.selected != null ? design.strokes?.[draw.selected] : undefined
+      // 1) Asas del sticker seleccionado
+      if (sel && sel.t === 'stamp' && draw.selected != null) {
+        const h = stickerHandles(sel)
+        if (Math.hypot(p[0] - h.remove[0], p[1] - h.remove[1]) <= 13) {
+          draw.onEditStart?.()
+          draw.onEdit?.(draw.selected, null)
+          draw.onSelect?.(null)
+          return
+        }
+        if (Math.hypot(p[0] - h.handle[0], p[1] - h.handle[1]) <= 14) {
+          draw.onEditStart?.()
+          drag.current = { kind: 'scale', i: draw.selected, s0: sel.s, r0: sel.r ?? 0, d0: Math.hypot(p[0] - sel.x, p[1] - sel.y), a0: Math.atan2(p[1] - sel.y, p[0] - sel.x) }
+          capture(e)
+          return
+        }
+      }
+      // 2) Tocar un sticker ya puesto lo selecciona y permite arrastrarlo
+      const hit = hitSticker(p[0], p[1])
+      if (hit != null) {
+        const st = design.strokes![hit] as Extract<Stroke, { t: 'stamp' }>
+        draw.onSelect?.(hit)
+        draw.onEditStart?.()
+        drag.current = { kind: 'move', i: hit, dx: p[0] - st.x, dy: p[1] - st.y }
+        capture(e)
+        return
+      }
+      // 3) En un lugar vacío se coloca uno nuevo (y queda seleccionado para acomodarlo)
+      if (draw.selected != null) draw.onSelect?.(null)
+      if (used >= MAX_POINTS) return
+      const st: Stroke = { t: 'stamp', c: draw.color, k: draw.sticker, x: p[0], y: p[1], s: draw.stickerSize / 12, r: draw.rotation }
+      draw.onAdd(draw.mirror ? [st, { ...st, x: mirrorX(p[0]), r: -draw.rotation, f: true }] : [st])
+      return
+    }
+    if (used >= MAX_POINTS) return
+    capture(e)
+    setLive(p)
+  }
+  const onMove = (e: RPointerEvent<SVGSVGElement>) => {
+    if (!draw) return
+    const p = toPoint(e)
+    if (!p) return
+    const d = drag.current
+    if (d) {
+      if (d.kind === 'move') draw.onEdit?.(d.i, { x: Math.round((p[0] - d.dx) * 10) / 10, y: Math.round((p[1] - d.dy) * 10) / 10 })
+      else {
+        const st = design.strokes?.[d.i]
+        if (!st || st.t !== 'stamp') return
+        const dist = Math.hypot(p[0] - st.x, p[1] - st.y)
+        const ang = Math.atan2(p[1] - st.y, p[0] - st.x)
+        const s2 = Math.max(0.4, Math.min(12, (d.s0 * dist) / Math.max(4, d.d0)))
+        const r2 = Math.round(d.r0 + ((ang - d.a0) * 180) / Math.PI)
+        draw.onEdit?.(d.i, { s: Math.round(s2 * 100) / 100, r: ((r2 + 540) % 360) - 180 })
+      }
+      return
+    }
+    if (!live) return
+    const lx = live[live.length - 2]
+    const ly = live[live.length - 1]
+    if (Math.hypot(p[0] - lx, p[1] - ly) < (draw.brush === 'aerosol' ? 4 : 2.2)) return
+    setLive([...live, p[0], p[1]])
+  }
+  const onUp = () => {
+    if (drag.current) {
+      drag.current = null
+      return
+    }
+    if (!draw || !live) return
+    const pts = live.length >= 4 ? live : [...live, live[0] + 0.1, live[1]]
+    const st: Stroke = { t: 'line', b: draw.brush, c: draw.color, w: draw.size, o: draw.opacity, p: pts }
+    draw.onAdd(draw.mirror ? [st, { ...st, p: pts.map((v, i) => (i % 2 === 0 ? mirrorX(v) : v)) }] : [st])
+    setLive(null)
+  }
+
   const uid = useId().replace(/[^a-zA-Z0-9_-]/g, '')
   const id = Object.fromEntries(
-    (['rib', 'weave', 'noise', 'twill', 'grain', 'side', 'top', 'soft', 'paint', 'clip', 'wood', 'pages', 'strap', 'elastic'] as const).map((k) => [k, `jl-${k}-${uid}`]),
+    (['rib', 'weave', 'noise', 'twill', 'grain', 'side', 'top', 'soft', 'paint', 'clip', 'wood', 'pages', 'strap', 'elastic', 'water', 'dry'] as const).map((k) => [k, `jl-${k}-${uid}`]),
   ) as Ids
   const surface = surfaces.find((x) => x.id === design.surface) ?? surfaces[0]
   const g = geometry[surface.kind]
@@ -415,7 +578,19 @@ export const ToteCanvas = forwardRef<SVGSVGElement, { design: Design; showPedest
   const cx = surface.kind === 'agenda' ? 312 : 300
 
   return (
-    <svg ref={ref} viewBox="0 0 600 740" role="img" aria-label={label} className="w-full h-auto block" xmlns="http://www.w3.org/2000/svg">
+    <svg
+      ref={setRefs}
+      viewBox="0 0 600 740"
+      role="img"
+      aria-label={label}
+      className="w-full h-auto block"
+      xmlns="http://www.w3.org/2000/svg"
+      style={draw ? { touchAction: 'none', cursor: 'crosshair' } : undefined}
+      onPointerDown={draw ? onDown : undefined}
+      onPointerMove={draw ? onMove : undefined}
+      onPointerUp={draw ? onUp : undefined}
+      onPointerCancel={draw ? onUp : undefined}
+    >
       <defs>
         {/* Tejido de lona: trama fina horizontal y vertical */}
         <pattern id={id.weave} width={3} height={3} patternUnits="userSpaceOnUse">
@@ -483,6 +658,7 @@ export const ToteCanvas = forwardRef<SVGSVGElement, { design: Design; showPedest
           <feDisplacementMap in="SourceGraphic" in2="n" scale="2.2" xChannelSelector="R" yChannelSelector="G" />
         </filter>
         <clipPath id={id.clip}>{bodyShape(surface.kind)}</clipPath>
+        <PaintDefs water={id.water} dry={id.dry} />
       </defs>
 
       <g key={surface.id} className="jl-svg-pop">
@@ -492,9 +668,26 @@ export const ToteCanvas = forwardRef<SVGSVGElement, { design: Design; showPedest
       <g clipPath={`url(#${id.clip})`}>
         <g transform={`translate(${cx} ${motifY}) scale(${motifScale})`}>
           <g key={`${design.motif}-${design.palette}-${design.size}-${design.surface}-${design.reference ? 1 : 0}`} className="jl-svg-pop" filter={design.motif === 'mi-idea' ? undefined : `url(#${id.paint})`}>
-            <MotifArt motif={design.motif} colors={palette} reference={design.reference} onDark={surface.dark} />
+            {design.motif === 'lienzo' ? null : <MotifArt motif={design.motif} colors={palette} reference={design.reference} onDark={surface.dark} />}
           </g>
         </g>
+
+        {/* Lo que pintó el cliente: cada pincel con su propia textura */}
+        <StrokesLayer strokes={design.strokes ?? []} uid={uid} f={{ paint: id.paint, water: id.water, dry: id.dry }} />
+        {live && draw && (
+          <g pointerEvents="none">
+            <LiveStroke p={live} brush={draw.brush} color={draw.color} size={draw.size} opacity={draw.opacity} />
+            {draw.mirror && <LiveStroke p={live.map((v, i) => (i % 2 === 0 ? mirrorX(v) : v))} brush={draw.brush} color={draw.color} size={draw.size} opacity={draw.opacity} />}
+          </g>
+        )}
+        {draw?.mirror && <line x1={cx} y1={60} x2={cx} y2={700} stroke={palette[0]} strokeOpacity={0.35} strokeWidth={1.2} strokeDasharray="4 6" pointerEvents="none" />}
+        {design.motif === 'lienzo' && !design.strokes?.length && !live && (
+          <g pointerEvents="none" opacity={0.75}>
+            <rect x={cx - 110} y={g.cy - 120} width={220} height={240} rx={18} fill="none" stroke={palette[0]} strokeWidth={2} strokeDasharray="6 8" />
+            <text x={cx} y={g.cy - 8} textAnchor="middle" fontFamily="'Cormorant Garamond', serif" fontStyle="italic" fontSize={34} fill={palette[0]}>Pinta aquí</text>
+            <text x={cx} y={g.cy + 24} textAnchor="middle" fontFamily="Montserrat, sans-serif" fontSize={13} fontWeight={600} letterSpacing={1.5} fill={palette[0]}>CON TU DEDO O MOUSE</text>
+          </g>
+        )}
 
         {hasText && (
           <text
@@ -521,6 +714,21 @@ export const ToteCanvas = forwardRef<SVGSVGElement, { design: Design; showPedest
         {/* La trama de la tela se ve a través de la pintura */}
         {isDenim ? <rect x={0} y={0} width={600} height={740} fill={`url(#${id.twill})`} opacity={0.4} /> : <rect x={0} y={0} width={600} height={740} fill="#fff" filter={`url(#${id.noise})`} opacity={0.5} />}
       </g>
+
+      {draw?.mode === 'sticker' && draw.selected != null && design.strokes?.[draw.selected]?.t === 'stamp' && (() => {
+        const st = design.strokes![draw.selected!] as Extract<Stroke, { t: 'stamp' }>
+        const h = stickerHandles(st)
+        return (
+          <g pointerEvents="none">
+            <polygon points={h.corners.map((c) => c.join(',')).join(' ')} fill="none" stroke="#fdf6ee" strokeWidth={3.5} />
+            <polygon points={h.corners.map((c) => c.join(',')).join(' ')} fill="none" stroke="#82001a" strokeWidth={1.6} strokeDasharray="5 4" />
+            <circle cx={h.handle[0]} cy={h.handle[1]} r={11} fill="#82001a" stroke="#fdf6ee" strokeWidth={2.5} />
+            <path d={`M${h.handle[0] - 4} ${h.handle[1] + 1} a4 4 0 1 1 4 3.6 M${h.handle[0] + 0.4} ${h.handle[1] + 4.6} l-1.8 -2.2 2.6 -.8`} fill="none" stroke="#fdf6ee" strokeWidth={1.6} strokeLinecap="round" />
+            <circle cx={h.remove[0]} cy={h.remove[1]} r={10} fill="#fdf6ee" stroke="#82001a" strokeWidth={1.8} />
+            <path d={`M${h.remove[0] - 3.6} ${h.remove[1] - 3.6} l7.2 7.2 M${h.remove[0] + 3.6} ${h.remove[1] - 3.6} l-7.2 7.2`} stroke="#82001a" strokeWidth={2} strokeLinecap="round" />
+          </g>
+        )
+      })()}
 
       {showBack && (
         <g transform="translate(300 652)">

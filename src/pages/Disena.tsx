@@ -9,6 +9,7 @@ import { track } from '../lib/analytics'
 import { usePageMeta } from '../lib/usePageMeta'
 import { useCart } from '../state/cart'
 import { MotifArt, ToteCanvas, shrinkImage, svgToPng } from '../components/disena/ToteCanvas'
+import { PaintStudio } from '../components/disena/PaintStudio'
 import { Arrow, Star, btnPrimary, container } from '../components/ui'
 
 const KEY = 'jl-design-v1'
@@ -49,6 +50,8 @@ export default function Disena() {
   const [uploadError, setUploadError] = useState('')
   const [fitError, setFitError] = useState(false)
   const [garmentOpen, setGarmentOpen] = useState(false)
+  // Estudio de pintura a mano (ventana a pantalla completa)
+  const [studioOpen, setStudioOpen] = useState(false)
   const [busy, setBusy] = useState(false)
   const svgRef = useRef<SVGSVGElement>(null)
   const headRef = useRef<HTMLHeadingElement>(null)
@@ -101,6 +104,7 @@ export default function Disena() {
   const palette = palettes.find((p) => p.id === design.palette)!.colors
   const surface = surfaces.find((x) => x.id === design.surface) ?? surfaces[0]
   const garment = surface.kind === 'sudadera'
+  const strokeCount = design.strokes?.length ?? 0
   const hasTwoSides = surface.kind === 'tote' || surface.kind === 'agenda' || surface.kind === 'sudadera'
   const estimate =
     customPricing.base === null ? null : customPricing.base + (design.text.trim() && customPricing.text ? customPricing.text : 0) + (design.back && customPricing.back ? customPricing.back : 0)
@@ -196,20 +200,20 @@ export default function Disena() {
       </section>
 
       <div className={`${container} flex flex-wrap gap-[clamp(28px,5vw,80px)] items-start`}>
-        <div className="flex-[1_1_460px] min-w-0 lg:sticky lg:top-6">
-          <div className="jl-studio relative rounded-[32px] overflow-hidden px-[6%] pt-[6%] pb-[3%]">
+        <div className={`flex-[1_1_460px] min-w-0 lg:sticky lg:top-6`}>
+          <div className={`jl-studio relative rounded-[32px] overflow-hidden px-[6%] pt-[6%] pb-[3%]`}>
             <Star size={22} color="#fad9cd" className="jl-star absolute left-[8%] top-[9%]" />
             <Star size={14} color="#fdf6ee" className="jl-star absolute right-[10%] top-[20%]" delay="1.3s" />
             <Star size={18} color="#fad9cd" className="jl-star absolute right-[14%] bottom-[16%]" delay="2.2s" />
-            <div className="relative max-w-[520px] mx-auto">
+            <div className={`relative max-w-[520px] mx-auto`}>
               <ToteCanvas ref={svgRef} design={design} />
             </div>
-            <div className="flex items-center justify-between gap-3 pt-3 text-crema text-[12px] tracking-[2px] uppercase font-semibold">
+            <div className={`flex items-center justify-between gap-3 pt-3 text-crema text-[12px] tracking-[2px] uppercase font-semibold`}>
               <span>Vista previa · ilustrativa</span>
               <span aria-live="polite" className={`transition-opacity duration-500 ${saved ? 'opacity-100' : 'opacity-0'}`}>Guardado</span>
             </div>
           </div>
-          <div className="flex flex-wrap gap-x-8 gap-y-3 pt-5 text-[14px] font-semibold">
+          <div className={`flex flex-wrap gap-x-8 gap-y-3 pt-5 text-[14px] font-semibold`}>
             <button type="button" onClick={download} disabled={busy} className="jl-link bg-transparent border-0 p-0 text-borgona cursor-pointer">
               Descargar mi boceto
             </button>
@@ -279,6 +283,7 @@ export default function Disena() {
                 </button>
               </p>
             )}
+            <PaintStudio open={studioOpen} onClose={() => setStudioOpen(false)} design={design} setDesign={setDesign} palette={surface.dark ? ['#fdf6ee', ...palette] : palette} surfaceName={surface.name} fabric={surface.fabric} />
             {garmentOpen && createPortal(
               <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-[#2a0a10]/55 jl-fade" onClick={() => setGarmentOpen(false)}>
                 <div
@@ -358,7 +363,7 @@ export default function Disena() {
             {s.id === 'inspiracion' && (
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 {motifs.map((m) => (
-                  <Choice key={m.id} active={design.motif === m.id} onClick={() => set('motif', m.id)} className="rounded-[22px] p-4 flex flex-col gap-3">
+                  <Choice key={m.id} active={design.motif === m.id} onClick={() => { set('motif', m.id); if (m.id === 'lienzo') setStudioOpen(true) }} className="rounded-[22px] p-4 flex flex-col gap-3">
                     <svg viewBox="-130 -140 260 280" className="w-full h-[110px]" aria-hidden="true">
                       {m.id === 'solo-texto' ? (
                         <text textAnchor="middle" dominantBaseline="middle" fontFamily="'Pinyon Script', cursive" fontSize={74} fill={palette[0]}>Aa</text>
@@ -375,6 +380,27 @@ export default function Disena() {
               </div>
             )}
             {s.id === 'inspiracion' && design.motif === 'mi-idea' && <div className="mt-6 jl-fade">{referenceUpload}</div>}
+            {s.id === 'inspiracion' && (
+              <div className="jl-fade mt-6 rounded-[24px] border border-borgona/30 bg-rosa/30 p-5 sm:p-6 flex flex-wrap items-center justify-between gap-4">
+                <div className="flex flex-col gap-1 max-w-[340px]">
+                  <span className="jl-label">Estudio de pintura</span>
+                  <span className="text-[13px] leading-[1.6]">
+                    {design.motif === 'lienzo' ? 'Pinta tu pieza desde cero' : 'Agrega tus propios trazos encima del motivo'}: pincel, acuarela, aerosol, caligrafía, stickers y más.
+                    {strokeCount > 0 && <strong> Llevas {strokeCount} trazos.</strong>}
+                  </span>
+                </div>
+                <div className="flex items-center gap-4">
+                  {strokeCount > 0 && (
+                    <button type="button" onClick={() => set('strokes', [])} className="jl-link bg-transparent border-0 p-0 text-borgona text-[13px] font-semibold cursor-pointer">
+                      Borrar trazos
+                    </button>
+                  )}
+                  <button type="button" onClick={() => setStudioOpen(true)} className="inline-flex items-center gap-[10px] min-h-[48px] px-6 rounded-full bg-borgona text-crema border-0 text-[14px] font-semibold cursor-pointer">
+                    {strokeCount > 0 ? 'Seguir pintando' : 'Abrir estudio'} <Arrow />
+                  </button>
+                </div>
+              </div>
+            )}
 
             {s.id === 'color' && (
               <div className="flex flex-col gap-8">

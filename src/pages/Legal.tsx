@@ -45,6 +45,8 @@ export function Terminos() {
         <li>El boceto incluye un ajuste sin costo. Cambios adicionales pueden tener un costo extra que se informará antes de aplicarlos.</li>
         <li>La pieza se pinta solo después de que apruebes el boceto. El tiempo de elaboración ({site.leadDays.custom} días hábiles) corre a partir de esa aprobación.</li>
         <li>Al solicitar una personalización confirmas que tienes derecho a usar los textos, imágenes o referencias que nos envías. No reproducimos logotipos ni marcas registradas de terceros para su venta.</li>
+        <li>Tampoco pintamos personajes, logotipos ni nombres de franquicias, películas, series o marcas protegidas sin licencia. Si tu referencia los incluye, te propondremos una alternativa original inspirada en lo que te gusta.</li>
+        <li>Los dibujos y stickers del estudio de pintura son una guía para el boceto; el resultado final se pinta a mano y puede variar ligeramente.</li>
       </ul>
       <h2>5. Precios y pagos</h2>
       <p>Los precios se expresan en {site.currency} e incluyen o no impuestos según se indique al confirmar. Aceptamos transferencia bancaria, enlace de pago con tarjeta y efectivo en entregas en persona. Los costos de envío se informan antes de confirmar.</p>

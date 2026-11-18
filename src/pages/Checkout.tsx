@@ -127,7 +127,7 @@ export default function Checkout() {
                   kind: 'custom',
                   name: l.name,
                   qty: l.qty,
-                  design: { ...l.design, reference: null },
+                  design: { ...l.design, reference: null, strokes: [] },
                   details: describeDesign({ ...l.design, reference: null }),
                   // Boceto y referencia viajan como imagen para guardarse con el pedido
                   preview: l.image?.startsWith('data:image/') ? l.image : null,
@@ -179,7 +179,7 @@ export default function Checkout() {
             address: f.delivery === 'envio' ? { street: f.street, city: f.city, zip: f.zip, references: f.references } : null,
             payment: f.payment,
             gift: f.gift,
-            items: lines.map((l) => (l.kind === 'custom' ? { ...l, image: undefined, design: { ...l.design, reference: l.design.reference ? 'adjunta en el chat' : null } } : { ...l, image: undefined })),
+            items: lines.map((l) => (l.kind === 'custom' ? { ...l, image: undefined, design: { ...l.design, reference: l.design.reference ? 'adjunta en el chat' : null, strokes: [] } } : { ...l, image: undefined })),
             subtotal,
             message,
           }),
