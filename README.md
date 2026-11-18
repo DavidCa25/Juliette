@@ -98,7 +98,7 @@ Los productos viven en `content/products/*.json` y los ajustes en `content/setti
 | `/` | Inicio: portada, colección, videos, personaliza, proceso, manifiesto, superficies y cuidados |
 | `/coleccion` | Todas las piezas |
 | `/producto/:slug` | Ficha con galería, video, personalización y carrito |
-| `/disena` | Experiencia "Diseña la tuya": motivo, paleta, texto, detalles y vista previa en vivo |
+| `/design` | Experiencia "Diseña la tuya": motivo, paleta, texto, detalles y vista previa en vivo |
 | `/carrito`, `/checkout`, `/pedido/confirmado` | Compra completa con validación y envío del pedido por WhatsApp |
 | `/terminos`, `/reembolsos`, `/privacidad`, `/cookies` | Textos legales base (revisarlos con asesoría legal) |
 | `/envios`, `/preguntas-frecuentes` | Información para clientes |

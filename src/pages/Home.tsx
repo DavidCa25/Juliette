@@ -50,7 +50,7 @@ function Hero() {
           <Link to="/#coleccion" className={`${btnPrimary} w-full sm:w-auto`}>
             Ver la colección <Arrow />
           </Link>
-          <Link to="/disena" className="jl-link mx-auto sm:mx-0 text-[15px] font-semibold">
+          <Link to="/design" className="jl-link mx-auto sm:mx-0 text-[15px] font-semibold">
             Diseña la tuya
           </Link>
         </div>
@@ -121,7 +121,7 @@ function Collection() {
         {featuredProducts.map((p, i) => (
           <ProductCard key={p.slug} to={`/producto/${p.slug}`} image={p.cover} alt={`${p.name}, pieza pintada a mano`} name={p.name} meta={p.short} price={p.price} status={p.status} offset={i === 1 ? 'mt-0 sm:mt-[clamp(0px,8vw,120px)]' : ''} />
         ))}
-        <ProductCard to="/disena" image="/media/still_snoopy.webp" alt="Tote bag personalizada sobre pedestal, fondo borgoña" name="A tu medida" meta="Tu idea, con boceto previo" price={null} priceNote={`Desde ${money(site.customFrom)}`} status="bajo-pedido" offset="mt-0 sm:mt-[clamp(0px,3.5vw,50px)]" />
+        <ProductCard to="/design" image="/media/still_snoopy.webp" alt="Tote bag personalizada sobre pedestal, fondo borgoña" name="A tu medida" meta="Tu idea, con boceto previo" price={null} priceNote={`Desde ${money(site.customFrom)}`} status="bajo-pedido" offset="mt-0 sm:mt-[clamp(0px,3.5vw,50px)]" />
       </div>
     </section>
   )
@@ -198,7 +198,7 @@ function Personaliza() {
               </div>
             ))}
           </div>
-          <Link to="/disena" className={`${btnLight} self-stretch sm:self-start`}>
+          <Link to="/design" className={`${btnLight} self-stretch sm:self-start`}>
             Iniciar un pedido personalizado <Arrow />
           </Link>
         </div>

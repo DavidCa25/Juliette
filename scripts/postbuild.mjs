@@ -24,7 +24,7 @@ const DEFAULT_DESC = 'Piezas pintadas a mano y personalizadas: tote bags, prenda
 const pages = [
   { path: '/', title: 'Julietté · Romance hecho arte.', desc: DEFAULT_DESC, priority: '1.0' },
   { path: '/coleccion', title: 'Colección · Julietté', desc: 'Todas las piezas pintadas a mano por Julietté, listas para entregar o bajo pedido.', priority: '0.9' },
-  { path: '/disena', title: 'Diseña la tuya · Julietté', desc: 'Crea tu propia pieza pintada a mano: elige la superficie, el motivo, la paleta y tus palabras, y recibe un boceto antes de pintarla.', priority: '0.9' },
+  { path: '/design', title: 'Diseña la tuya · Julietté', desc: 'Crea tu propia pieza pintada a mano: elige la superficie, el motivo, la paleta y tus palabras, y recibe un boceto antes de pintarla.', priority: '0.9' },
   { path: '/envios', title: 'Envíos y entregas · Julietté', desc: `Envíos a ${settings.shippingZone} y entregas en ${settings.city}.`, priority: '0.5' },
   { path: '/preguntas-frecuentes', title: 'Preguntas frecuentes · Julietté', desc: 'Cómo funcionan los pedidos personalizados, tiempos, cuidados y pagos.', priority: '0.5' },
   { path: '/terminos', title: 'Términos y condiciones · Julietté', desc: 'Condiciones de compra y uso del sitio de Julietté.', priority: '0.3' },

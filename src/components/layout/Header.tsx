@@ -6,7 +6,7 @@ import { container } from '../ui'
 
 const links = [
   { to: '/#coleccion', label: 'Colección' },
-  { to: '/disena', label: 'Personaliza' },
+  { to: '/design', label: 'Personaliza' },
   { to: '/#proceso', label: 'Proceso' },
   { to: '/#historia', label: 'Historia' },
   { to: '/#cuidados', label: 'Cuidados' },
@@ -71,7 +71,7 @@ export function Header() {
         </nav>
 
         <div className="flex items-center gap-2 lg:gap-4">
-          <Link to="/disena" className="jl-btn hidden lg:inline-flex items-center gap-[10px] min-h-[46px] px-[26px] rounded-full bg-borgona text-crema text-[14px] font-semibold">
+          <Link to="/design" className="jl-btn hidden lg:inline-flex items-center gap-[10px] min-h-[46px] px-[26px] rounded-full bg-borgona text-crema text-[14px] font-semibold">
             Hacer un pedido
           </Link>
           <CartButton />
@@ -101,7 +101,7 @@ export function Header() {
               {l.label}
             </Link>
           ))}
-          <Link to="/disena" className="mt-7 flex items-center justify-center min-h-[54px] rounded-full bg-borgona text-crema text-[15px] font-semibold">
+          <Link to="/design" className="mt-7 flex items-center justify-center min-h-[54px] rounded-full bg-borgona text-crema text-[15px] font-semibold">
             Hacer un pedido
           </Link>
         </nav>

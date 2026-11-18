@@ -18,7 +18,7 @@ export default function Carrito() {
           <p className="m-0 text-[17px]">Aún no hay piezas aquí.</p>
           <div className="flex gap-8 flex-wrap">
             <Link to="/coleccion" className={btnPrimary}>Ver la colección <Arrow /></Link>
-            <Link to="/disena" className="jl-link self-center text-[15px] font-semibold">Diseña la tuya</Link>
+            <Link to="/design" className="jl-link self-center text-[15px] font-semibold">Diseña la tuya</Link>
           </div>
         </div>
       ) : (
@@ -34,7 +34,7 @@ export default function Carrito() {
                     {l.kind === 'product' ? (
                       <Link to={`/producto/${l.slug}`} className="font-display text-[34px] leading-none">{l.name}</Link>
                     ) : (
-                      <Link to="/disena" className="font-display text-[34px] leading-none">{l.name}</Link>
+                      <Link to="/design" className="font-display text-[34px] leading-none">{l.name}</Link>
                     )}
                     <span className="text-[16px] font-semibold">{l.unitPrice === null ? 'Por cotizar' : money(l.unitPrice * l.qty)}</span>
                   </div>

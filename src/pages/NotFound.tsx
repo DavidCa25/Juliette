@@ -24,7 +24,7 @@ export default function NotFound() {
       </h1>
       <div className="flex flex-wrap items-center gap-8">
         <Link to="/" className={btnPrimary}>Volver al inicio <Arrow /></Link>
-        <Link to="/disena" className="jl-link text-[15px] font-semibold">Diseña la tuya</Link>
+        <Link to="/design" className="jl-link text-[15px] font-semibold">Diseña la tuya</Link>
       </div>
     </section>
   )

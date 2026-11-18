@@ -60,14 +60,14 @@ export default function Coleccion() {
               offset={i % 3 === 1 ? 'mt-0 sm:mt-[clamp(0px,8vw,120px)]' : i % 3 === 2 ? 'mt-0 sm:mt-[clamp(0px,3.5vw,50px)]' : ''}
             />
           ))}
-          <ProductCard to="/disena" image="/media/still_snoopy.webp" alt="Pieza personalizada sobre pedestal" name="A tu medida" meta="Tote, prenda, cuadro o agenda" price={null} priceNote={`Desde ${money(site.customFrom)}`} status="bajo-pedido" />
+          <ProductCard to="/design" image="/media/still_snoopy.webp" alt="Pieza personalizada sobre pedestal" name="A tu medida" meta="Tote, prenda, cuadro o agenda" price={null} priceNote={`Desde ${money(site.customFrom)}`} status="bajo-pedido" />
         </div>
 
         <div className="mt-[clamp(56px,7vw,100px)] flex flex-wrap items-center justify-between gap-6 border-t border-crema/40 pt-8">
           <p className="m-0 font-display font-light text-[clamp(30px,3.4vw,48px)] leading-tight">
             ¿Tienes una idea <span className="italic">propia?</span>
           </p>
-          <Link to="/disena" className={btnLight}>
+          <Link to="/design" className={btnLight}>
             Diseña la tuya <Arrow />
           </Link>
         </div>

@@ -49,7 +49,7 @@ const router = wrapRouter(createBrowserRouter)([
       { path: '/', element: <Home /> },
       { path: '/coleccion', element: <Coleccion /> },
       { path: '/producto/:slug', element: <Producto /> },
-      { path: '/disena', element: <Disena /> },
+      { path: '/design', element: <Disena /> },
       { path: '/carrito', element: <Carrito /> },
       { path: '/checkout', element: <Checkout /> },
       { path: '/pedido/confirmado', element: <Confirmacion /> },

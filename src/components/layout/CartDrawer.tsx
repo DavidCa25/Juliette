@@ -72,7 +72,7 @@ export function CartDrawer() {
             <Link to="/#coleccion" onClick={closeDrawer} className="jl-link text-[15px] font-semibold">
               Ver la colección
             </Link>
-            <Link to="/disena" onClick={closeDrawer} className="jl-link text-[15px] font-semibold">
+            <Link to="/design" onClick={closeDrawer} className="jl-link text-[15px] font-semibold">
               Diseña la tuya
             </Link>
           </div>
