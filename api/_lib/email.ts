@@ -79,7 +79,7 @@ function layout(opts: { preheader: string; title: string; intro: string; body: s
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${CREAM}"><tr><td align="center" style="padding:36px 16px 40px">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px">
 <tr><td align="center" style="padding:0 0 26px">
-  ${url ? `<a href="${url}"><img src="${url}/media/email/sello.png" width="140" height="194" alt="Julietté · Romance hecho arte." style="display:block;border:0;width:140px;height:auto"></a>` : `<p style="margin:0;font-weight:700;font-size:22px;letter-spacing:2px">JULIETTÉ</p>`}
+  ${url ? `<a href="${url}"><img src="${url}/media/email/sello.png" width="150" height="196" alt="Julietté · Romance hecho arte." style="display:block;border:0;width:150px;height:auto"></a>` : `<p style="margin:0;font-weight:700;font-size:22px;letter-spacing:2px">JULIETTÉ</p>`}
 </td></tr>
 <tr><td style="background:#ffffff;border:1px solid ${ROSE};border-radius:24px;padding:34px 30px 30px">
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
@@ -99,28 +99,47 @@ function layout(opts: { preheader: string; title: string; intro: string; body: s
 </table></td></tr></table></body></html>`
 }
 
+/** Resume los detalles del diseño: lo básico en una línea y lo personal (texto, ocasión, notas) aparte. */
+function compactDetails(details: string[]) {
+  const basicKeys = ['Pieza', 'Motivo', 'Paleta', 'Tamaño']
+  const basic: string[] = []
+  const extra: string[] = []
+  for (const d of details) {
+    const k = d.indexOf(': ')
+    if (k === -1) basic.push(esc(d))
+    else if (basicKeys.includes(d.slice(0, k))) basic.push(esc(d.slice(k + 2)))
+    else extra.push(`<strong>${esc(d.slice(0, k))}:</strong> ${esc(d.slice(k + 2))}`)
+  }
+  return `<p style="margin:0;font-size:13px;line-height:1.6">${basic.join(' · ')}</p>${extra.length ? `<p style="margin:6px 0 0;font-size:13px;line-height:1.6">${extra.join('<br>')}</p>` : ''}`
+}
+
 function itemsTable(o: MailOrder, opts: { owner: boolean }) {
   const rows = o.items
     .map((i) => {
       const img = i.previewUrl
-        ? `<td width="112" valign="top" style="padding:14px 16px 14px 0;border-bottom:1px solid ${ROSE}"><img src="${safeUrl(i.previewUrl)}" width="96" alt="Boceto de tu pieza" style="display:block;width:96px;height:auto;border-radius:48px 48px 14px 14px;background:#5f272d;border:0"></td>`
+        ? `<td width="96" valign="top" style="padding:16px 16px 12px 0"><img src="${safeUrl(i.previewUrl)}" width="80" alt="Boceto de tu pieza" style="display:block;width:80px;height:auto;border-radius:40px 40px 12px 12px;background:#5f272d;border:0"></td>`
         : ''
+      const price = i.unitPrice === null ? 'Por cotizar' : money(i.unitPrice * i.qty)
+      const links = [
+        opts.owner && i.previewUrl ? `<a href="${safeUrl(i.previewUrl)}" style="color:${BURGUNDY}">Abrir boceto</a>` : '',
+        opts.owner && i.referenceUrl ? `<a href="${safeUrl(i.referenceUrl)}" style="color:${BURGUNDY}">Ver referencia</a>` : '',
+      ].filter(Boolean)
+      const main = `<td valign="top" ${img ? '' : 'colspan="2"'} style="padding:16px 0 12px;font-size:14px;line-height:1.5">
+    <strong style="font-size:15px">${i.qty} × ${esc(i.name)}</strong>
+    ${i.optionLabel ? `<br><span style="font-size:13px">${esc(i.optionLabel)}</span>` : ''}
+    ${i.idea ? `<br><span style="font-size:13px">“${esc(i.idea)}”</span>` : ''}
+    <br><span style="font-size:13px;font-weight:600">${i.kind === 'custom' ? 'Se cotiza con boceto' : price}</span>
+    ${links.length ? `<br><span style="font-size:12px">${links.join(' &nbsp;·&nbsp; ')}</span>` : ''}
+  </td>`
       const details =
         i.details && i.details.length
-          ? `<br><span style="font-size:12px;line-height:1.7;opacity:.85">${i.details.map(esc).join('<br>')}</span>`
+          ? `<tr><td colspan="2" style="padding:0 0 16px"><table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${CREAM};border-radius:14px"><tr><td style="padding:12px 16px">${compactDetails(i.details)}</td></tr></table></td></tr>`
           : ''
-      const ref =
-        opts.owner && i.referenceUrl ? `<br><a href="${safeUrl(i.referenceUrl)}" style="font-size:12px;color:${BURGUNDY}">Ver imagen de referencia</a>` : ''
-      const boceto = opts.owner && i.previewUrl ? `<br><a href="${safeUrl(i.previewUrl)}" style="font-size:12px;color:${BURGUNDY}">Abrir boceto en grande</a>` : ''
-      return `<tr>
-  ${img}
-  <td valign="top" ${img ? '' : 'colspan="2"'} style="padding:14px 0;border-bottom:1px solid ${ROSE};font-size:14px;line-height:1.5"><strong>${i.qty} × ${esc(i.name)}</strong>${i.optionLabel ? `<br><span style="font-size:13px">${esc(i.optionLabel)}</span>` : ''}${i.idea ? `<br><span style="font-size:13px">“${esc(i.idea)}”</span>` : ''}${i.kind === 'custom' ? '<br><span style="font-size:12px;font-weight:600;letter-spacing:.5px">Pieza a medida · se cotiza con boceto</span>' : ''}${details}${boceto}${ref}</td>
-  <td align="right" valign="top" style="padding:14px 0 14px 12px;border-bottom:1px solid ${ROSE};font-size:14px;white-space:nowrap">${i.unitPrice === null ? 'Por cotizar' : money(i.unitPrice * i.qty)}</td>
-</tr>`
+      return `<tr>${img}${main}</tr>${details}<tr><td colspan="2" style="border-bottom:1px solid ${ROSE};font-size:0;line-height:0">&nbsp;</td></tr>`
     })
     .join('')
   return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0">${rows}
-<tr><td colspan="2" style="padding:14px 0;font-size:15px"><strong>Subtotal</strong></td><td align="right" style="padding:14px 0;font-size:15px"><strong>${money(o.total)}</strong></td></tr></table>`
+<tr><td colspan="2" style="padding:14px 0 0;font-size:15px"><table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td style="font-size:15px"><strong>Subtotal</strong></td><td align="right" style="font-size:15px"><strong>${money(o.total)}</strong></td></tr></table></td></tr></table>`
 }
 
 function deliveryText(o: MailOrder) {

@@ -84,6 +84,30 @@ export default function Disena() {
     }
   }
 
+  const referenceUpload = (
+    <div className="flex flex-col gap-3">
+      <span className="jl-label">{design.motif === 'mi-idea' ? 'Tu imagen de referencia' : 'Imagen de referencia (opcional)'}</span>
+      <label htmlFor="jl-ref" className="flex items-center gap-5 border border-dashed border-borgona rounded-[22px] p-5 cursor-pointer hover:bg-rosa/40 transition-colors">
+        {design.reference ? (
+          <img src={design.reference} alt="Tu referencia" className="w-16 h-20 object-cover rounded-t-full" />
+        ) : (
+          <span className="w-16 h-20 rounded-t-full bg-rosa flex items-center justify-center"><Star size={18} color="#82001a" /></span>
+        )}
+        <span className="flex flex-col gap-1">
+          <span className="text-[15px] font-semibold">{design.reference ? 'Cambiar imagen' : 'Subir una imagen'}</span>
+          <span className="text-[13px]">Se envía con tu pedido para que Julietté la vea antes de bocetar.</span>
+        </span>
+      </label>
+      <input id="jl-ref" type="file" accept="image/*" className="sr-only" onChange={(e) => onUpload(e.target.files?.[0])} />
+      {design.reference && (
+        <button type="button" onClick={() => set('reference', null)} className="jl-link self-start bg-transparent border-0 p-0 text-borgona text-[13px] font-semibold cursor-pointer">
+          Quitar imagen
+        </button>
+      )}
+      {uploadError && <p role="alert" className="m-0 text-[13px] font-semibold">{uploadError}</p>}
+    </div>
+  )
+
   async function download() {
     if (!svgRef.current) return
     setBusy(true)
@@ -217,6 +241,7 @@ export default function Disena() {
                 ))}
               </div>
             )}
+            {s.id === 'inspiracion' && design.motif === 'mi-idea' && <div className="mt-6 jl-fade">{referenceUpload}</div>}
 
             {s.id === 'color' && (
               <div className="flex flex-col gap-8">
@@ -307,27 +332,7 @@ export default function Disena() {
                   <label htmlFor="jl-notas" className="jl-label">Cuéntanos tu historia</label>
                   <textarea id="jl-notas" rows={3} maxLength={500} value={design.notes} onChange={(e) => set('notes', e.target.value)} placeholder="Qué significa para ti, colores que no deben faltar, detalles que imaginas…" className="jl-field resize-y" />
                 </div>
-                <div className="flex flex-col gap-3">
-                  <span className="jl-label">Imagen de referencia (opcional)</span>
-                  <label htmlFor="jl-ref" className="flex items-center gap-5 border border-dashed border-borgona rounded-[22px] p-5 cursor-pointer hover:bg-rosa/40 transition-colors">
-                    {design.reference ? (
-                      <img src={design.reference} alt="Tu referencia" className="w-16 h-20 object-cover rounded-t-full" />
-                    ) : (
-                      <span className="w-16 h-20 rounded-t-full bg-rosa flex items-center justify-center"><Star size={18} color="#82001a" /></span>
-                    )}
-                    <span className="flex flex-col gap-1">
-                      <span className="text-[15px] font-semibold">{design.reference ? 'Cambiar imagen' : 'Subir una imagen'}</span>
-                      <span className="text-[13px]">Se queda en tu dispositivo hasta que nos la envíes.</span>
-                    </span>
-                  </label>
-                  <input id="jl-ref" type="file" accept="image/*" className="sr-only" onChange={(e) => onUpload(e.target.files?.[0])} />
-                  {design.reference && (
-                    <button type="button" onClick={() => set('reference', null)} className="jl-link self-start bg-transparent border-0 p-0 text-borgona text-[13px] font-semibold cursor-pointer">
-                      Quitar imagen
-                    </button>
-                  )}
-                  {uploadError && <p role="alert" className="m-0 text-[13px] font-semibold">{uploadError}</p>}
-                </div>
+                {referenceUpload}
               </div>
             )}
 
