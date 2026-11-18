@@ -7,7 +7,10 @@
   "functions": {
     "api/orders.ts": { "includeFiles": "content/**" }
   },
-  "rewrites": [{ "source": "/((?!assets/|media/|fonts/|api/|.*\\..*).*)", "destination": "/" }],
+  "rewrites": [
+    { "source": "/api/auth/:path*", "destination": "/api/better-auth" },
+    { "source": "/((?!assets/|media/|fonts/|api/|.*\\..*).*)", "destination": "/" }
+  ],
   "headers": [
     {
       "source": "/assets/(.*)",

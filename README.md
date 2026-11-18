@@ -19,7 +19,7 @@ La dueña entra con su **cuenta de Google** y puede agregar, editar o quitar pro
 
 | Pieza | Qué hace |
 |---|---|
-| Better Auth + Google (`api/auth/[...all].ts`) | Inicio de sesión. Sin base de datos: la sesión viaja cifrada (JWE) en una cookie segura de 7 días. |
+| Better Auth + Google (`api/better-auth.ts`) | Inicio de sesión. Sin base de datos: la sesión viaja cifrada (JWE) en una cookie segura de 7 días. |
 | Lista de correos (`ADMIN_EMAILS`) | Solo esos correos pueden usar el panel. Cualquier otra cuenta ve "sin acceso". |
 | `api/admin/content.ts` | Lee el contenido actual y publica todos los cambios en **un solo commit**, con un token del servidor. |
 | `api/admin/upload.ts` + Cloudflare R2 | Las fotos (convertidas a WebP antes de subir) y los videos van directo del navegador a R2 con una URL firmada de 10 minutos. El servidor solo firma si es admin. R2 no cobra transferencia. |
