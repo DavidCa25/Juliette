@@ -223,16 +223,20 @@ export default function Disena() {
           <ol className="m-0 p-0 list-none grid grid-cols-6 gap-2" aria-label="Pasos">
             {steps.map((st, i) => (
               <li key={st.id}>
-                <button type="button" onClick={() => go(i)} aria-current={i === step ? 'step' : undefined} className="w-full bg-transparent border-0 p-0 text-left text-borgona cursor-pointer flex flex-col gap-2">
+                <button type="button" onClick={() => go(i)} aria-current={i === step ? 'step' : undefined} aria-label={`Paso ${i + 1}: ${st.label}`} className="w-full bg-transparent border-0 p-0 text-left text-borgona cursor-pointer flex flex-col gap-2">
                   <span className={`h-[3px] rounded-full transition-colors duration-500 ${i <= step ? 'bg-borgona' : 'bg-borgona/20'}`} />
                   <span className={`text-[11px] sm:text-[12px] tracking-[1.5px] uppercase ${i === step ? 'font-bold' : 'font-medium opacity-70'}`}>
-                    <span className="hidden sm:inline">0{i + 1} · </span>
-                    {st.label}
+                    {/* En celular solo cabe el número; el nombre del paso actual va debajo */}
+                    <span className="sm:hidden">0{i + 1}</span>
+                    <span className="hidden sm:inline">0{i + 1} · {st.label}</span>
                   </span>
                 </button>
               </li>
             ))}
           </ol>
+          <p className="sm:hidden m-0 -mt-4 text-[11px] tracking-[1.5px] uppercase font-semibold">
+            Paso {step + 1} de {steps.length} · {s.label}
+          </p>
 
           <div key={s.id} className="jl-fade flex flex-col gap-3">
             <h2 ref={headRef} tabIndex={-1} className="m-0 font-display font-light text-[clamp(40px,4.4vw,64px)] leading-[.98] outline-none">
