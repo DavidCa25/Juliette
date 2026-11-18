@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { createPortal } from 'react-dom'
 import { Link } from 'react-router-dom'
 import { customPricing, site } from '../config/site'
-import { defaultDesign, describeDesign, fonts, motifs, occasions, palettes, placements, sizes, surfaces, type Design } from '../data/design'
+import { defaultDesign, describeDesign, fitFor, fonts, motifs, occasions, palettes, placements, sizes, surfaces, type Design } from '../data/design'
 import { money, readJSON, writeJSON } from '../lib/format'
 import { openWhatsApp } from '../lib/whatsapp'
 import { track } from '../lib/analytics'
@@ -37,10 +38,17 @@ function Choice({ active, onClick, children, className = '', label }: { active: 
 
 export default function Disena() {
   usePageMeta('Diseña la tuya', 'Crea tu propia tote bag pintada a mano: elige motivo, paleta y palabras, y recibe un boceto antes de pintarla.')
-  const [design, setDesign] = useState<Design>(() => ({ ...defaultDesign, ...readJSON<Partial<Design>>(KEY, {}) }))
+  const [design, setDesign] = useState<Design>(() => {
+    const saved = { ...defaultDesign, ...readJSON<Partial<Design>>(KEY, {}) }
+    // Diseños guardados con piezas que ya no existen (ej. la chamarra de mezclilla) pasan a la opción más cercana
+    if (!surfaces.some((x) => x.id === saved.surface)) saved.surface = String(saved.surface).startsWith('chamarra') ? 'sudadera-beige' : defaultDesign.surface
+    return saved
+  })
   const [step, setStep] = useState(0)
   const [saved, setSaved] = useState(false)
   const [uploadError, setUploadError] = useState('')
+  const [fitError, setFitError] = useState(false)
+  const [garmentOpen, setGarmentOpen] = useState(false)
   const [busy, setBusy] = useState(false)
   const svgRef = useRef<SVGSVGElement>(null)
   const headRef = useRef<HTMLHeadingElement>(null)
@@ -57,9 +65,34 @@ export default function Disena() {
     track('design_start')
   }, [])
 
+  // Selector de prenda: se cierra con Esc y lleva el foco al diálogo
+  useEffect(() => {
+    if (!garmentOpen) return
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setGarmentOpen(false)
+    window.addEventListener('keydown', onKey)
+    window.requestAnimationFrame(() => document.querySelector<HTMLElement>('[role=dialog] button')?.focus())
+    return () => window.removeEventListener('keydown', onKey)
+  }, [garmentOpen])
+
   const set = <K extends keyof Design>(k: K, v: Design[K]) => setDesign((d) => ({ ...d, [k]: v }))
+  const pickSurface = (id: Design['surface']) => {
+    const opts = fitFor(id)?.options ?? []
+    setDesign((d) => ({ ...d, surface: id, fit: opts.includes(d.fit) ? d.fit : '' }))
+    setFitError(false)
+  }
+  // Tarjetas del primer paso: la sudadera (beige o negra) es una sola tarjeta; el color se elige en una ventana
+  const pieceCards = surfaces.filter((x) => x.id !== 'sudadera-negra')
+  const fit = fitFor(design.surface)
+  const missingFit = !!fit && !fit.options.includes(design.fit)
   const go = (i: number) => {
     const next = Math.max(0, Math.min(steps.length - 1, i))
+    // La talla, medida o tamaño se elige antes de seguir
+    if (next > 0 && missingFit) {
+      setFitError(true)
+      if (step !== 0) setStep(0)
+      window.requestAnimationFrame(() => document.getElementById('jl-fit')?.scrollIntoView({ block: 'center', behavior: 'smooth' }))
+      return
+    }
     if (next !== step) track('design_step', { step: steps[next].id, surface: design.surface })
     setStep(next)
     window.requestAnimationFrame(() => headRef.current?.focus())
@@ -67,7 +100,8 @@ export default function Disena() {
   const s = steps[step]
   const palette = palettes.find((p) => p.id === design.palette)!.colors
   const surface = surfaces.find((x) => x.id === design.surface) ?? surfaces[0]
-  const hasTwoSides = surface.kind === 'tote' || surface.kind === 'agenda'
+  const garment = surface.kind === 'sudadera'
+  const hasTwoSides = surface.kind === 'tote' || surface.kind === 'agenda' || surface.kind === 'sudadera'
   const estimate =
     customPricing.base === null ? null : customPricing.base + (design.text.trim() && customPricing.text ? customPricing.text : 0) + (design.back && customPricing.back ? customPricing.back : 0)
 
@@ -123,6 +157,7 @@ export default function Disena() {
   }
 
   async function addToCart() {
+    if (missingFit) return go(1)
     if (!svgRef.current) return
     setBusy(true)
     try {
@@ -135,6 +170,7 @@ export default function Disena() {
   }
 
   function sendWhatsApp() {
+    if (missingFit) return go(1)
     track('design_complete', { via: 'whatsapp', surface: design.surface, motif: design.motif, palette: design.palette })
     openWhatsApp(['Hola, Julietté. Creé este diseño en su sitio y me gustaría un boceto:', '', ...describeDesign(design).map((l) => `• ${l}`)].join('\n'))
   }
@@ -155,7 +191,7 @@ export default function Disena() {
           </h1>
         </div>
         <p className="jl-fade m-0 max-w-[380px] text-[16px] leading-[1.7]" style={{ animationDelay: '.4s' }}>
-          Tote, chamarra, cuadro o agenda: elige, combina y escribe. Mientras decides, tu pieza se pinta en vivo. Después, Julietté la convierte en un boceto y la pinta a mano para ti.
+          Tote, sudadera, cuadro o agenda: elige, combina y escribe. Mientras decides, tu pieza se pinta en vivo. Después, Julietté la convierte en un boceto y la pinta a mano para ti.
         </p>
       </section>
 
@@ -208,18 +244,111 @@ export default function Disena() {
           <div key={`body-${s.id}`} className="jl-fade" style={{ animationDelay: '.08s' }}>
             {s.id === 'lienzo' && (
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                {surfaces.map((sf) => (
-                  <Choice key={sf.id} active={design.surface === sf.id} onClick={() => set('surface', sf.id)} className="rounded-[22px] p-3 flex flex-col gap-3">
-                    <span className="jl-studio rounded-[16px] overflow-hidden px-3 pt-3 block" aria-hidden="true">
-                      <ToteCanvas design={{ ...design, surface: sf.id }} />
-                    </span>
-                    <span className="flex flex-col gap-1 px-1 pb-1">
-                      <span className="text-[15px] font-semibold">{sf.name}</span>
-                      <span className="text-[12px] leading-snug">{sf.sub}</span>
-                    </span>
-                  </Choice>
-                ))}
+                {pieceCards.map((sf) => {
+                  // La sudadera es una sola tarjeta: al tocarla se abre una ventana para elegir el color
+                  const isGarment = sf.kind === 'sudadera'
+                  const current = isGarment ? (garment ? surface.id : 'sudadera-beige') : sf.id
+                  return (
+                    <Choice
+                      key={sf.id}
+                      active={isGarment ? garment : design.surface === sf.id}
+                      onClick={() => (isGarment ? setGarmentOpen(true) : pickSurface(sf.id))}
+                      className="rounded-[22px] p-3 flex flex-col gap-3"
+                    >
+                      <span className="jl-studio rounded-[16px] overflow-hidden px-3 pt-3 block" aria-hidden="true">
+                        <ToteCanvas design={{ ...design, surface: current }} />
+                      </span>
+                      <span className="flex flex-col gap-1 px-1 pb-1">
+                        <span className="text-[15px] font-semibold">{isGarment ? 'Sudadera con gorro' : sf.name}</span>
+                        <span className="text-[12px] leading-snug">{isGarment ? (garment ? surface.name : 'Beige o negra') : sf.sub}</span>
+                      </span>
+                    </Choice>
+                  )
+                })}
               </div>
+            )}
+            {s.id === 'lienzo' && garment && (
+              <p className="jl-fade m-0 mt-6 text-[14px]">
+                <strong>{surface.name}</strong> ·{' '}
+                <button type="button" onClick={() => setGarmentOpen(true)} className="jl-link bg-transparent border-0 p-0 text-borgona text-[14px] font-semibold cursor-pointer">
+                  Cambiar color
+                </button>
+              </p>
+            )}
+            {garmentOpen && createPortal(
+              <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-[#2a0a10]/55 jl-fade" onClick={() => setGarmentOpen(false)}>
+                <div
+                  role="dialog"
+                  aria-modal="true"
+                  aria-labelledby="jl-garment-title"
+                  onClick={(e) => e.stopPropagation()}
+                  onKeyDown={(e) => e.key === 'Escape' && setGarmentOpen(false)}
+                  className="w-full max-w-[520px] max-h-[90vh] overflow-y-auto bg-crema text-borgona rounded-[28px] p-6 sm:p-8 flex flex-col gap-6 shadow-[0_30px_80px_-20px_rgba(42,10,16,.6)]"
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex flex-col gap-1">
+                      <h3 id="jl-garment-title" className="m-0 font-display font-light text-[34px] leading-none">Elige tu sudadera</h3>
+                      <p className="m-0 text-[13px]">Con gorro y bolsa canguro, pintada a mano.</p>
+                    </div>
+                    <button type="button" onClick={() => setGarmentOpen(false)} aria-label="Cerrar" className="w-10 h-10 rounded-full border border-borgona/30 bg-transparent text-borgona text-[18px] leading-none cursor-pointer flex-none">
+                      ×
+                    </button>
+                  </div>
+                  {(['sudadera'] as const).map((kind) => (
+                    <div key={kind} className="flex flex-col gap-3">
+                                            <div className="grid grid-cols-2 gap-3">
+                        {surfaces
+                          .filter((x) => x.kind === kind)
+                          .map((x) => (
+                            <Choice
+                              key={x.id}
+                              active={design.surface === x.id}
+                              onClick={() => {
+                                pickSurface(x.id)
+                                setGarmentOpen(false)
+                              }}
+                              className="rounded-[20px] p-2 flex flex-col gap-2"
+                              label={x.name}
+                            >
+                              <span className="jl-studio rounded-[14px] overflow-hidden px-2 pt-2 block" aria-hidden="true">
+                                <ToteCanvas design={{ ...design, surface: x.id }} showPedestal={false} />
+                              </span>
+                              <span className="flex items-center gap-2 px-1 pb-1 text-[14px] font-semibold">
+                                <span className="w-4 h-4 rounded-full border border-borgona/30 flex-none" style={{ background: x.fabric }} />
+                                {x.dark ? 'Negra' : 'Beige'}
+                              </span>
+                            </Choice>
+                          ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>,
+              document.body,
+            )}
+            {s.id === 'lienzo' && fit && (
+              <fieldset id="jl-fit" key={design.surface} className="jl-fade m-0 mt-8 p-0 border-0 flex flex-col gap-3">
+                <legend className="pb-3 jl-label">{fit.label}</legend>
+                <div className="flex flex-wrap gap-2">
+                  {fit.options.map((o) => (
+                    <button
+                      key={o}
+                      type="button"
+                      aria-pressed={design.fit === o}
+                      onClick={() => {
+                        set('fit', o)
+                        setFitError(false)
+                      }}
+                      className={`jl-opt min-h-[46px] min-w-[54px] px-4 rounded-full border text-[14px] font-semibold cursor-pointer transition-colors ${design.fit === o ? 'bg-borgona text-crema border-borgona' : 'bg-transparent text-borgona border-borgona/40 hover:border-borgona'}`}
+                    >
+                      {o}
+                    </button>
+                  ))}
+                </div>
+                <p role={fitError ? 'alert' : undefined} className={`m-0 text-[13px] leading-[1.6] ${fitError ? 'font-semibold' : ''}`}>
+                  {fitError ? `Elige ${fit.label === 'Talla' ? 'una talla' : fit.label === 'Medida' ? 'una medida' : 'un tamaño'} para continuar.` : fit.hint}
+                </p>
+              </fieldset>
             )}
 
             {s.id === 'inspiracion' && (

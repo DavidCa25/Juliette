@@ -20,6 +20,9 @@ export type AdminProduct = {
   dimensions: string
   material: string
   technique: string
+  /** Tallas o medidas a elegir (vacío = medida única) */
+  sizes: string[]
+  sizeLabel: string
   images: AdminImage[]
   video: string | null
 }
@@ -31,7 +34,7 @@ export type Me =
   | { signedIn: false }
   | { signedIn: true; isAdmin: boolean; user: { name: string; email: string; image: string | null }; storage: { files: boolean; github: boolean; db: boolean } }
 
-export type OrderItem = { kind: 'product' | 'custom'; name: string; qty: number; unitPrice: number | null; optionLabel?: string; idea?: string | null; design?: Record<string, unknown> | null; details?: string[]; previewUrl?: string | null; referenceUrl?: string | null }
+export type OrderItem = { kind: 'product' | 'custom'; name: string; qty: number; unitPrice: number | null; optionLabel?: string; idea?: string | null; size?: string | null; design?: Record<string, unknown> | null; details?: string[]; previewUrl?: string | null; referenceUrl?: string | null }
 export type Order = {
   id: string
   created_at: string

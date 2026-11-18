@@ -50,6 +50,9 @@ export type Product = {
   media: Media[]
   cover: string
   options: ProductOption[]
+  /** Tallas o medidas a elegir; vacío = medida única */
+  sizes: string[]
+  sizeLabel: string
 }
 
 type RawProduct = {
@@ -67,6 +70,8 @@ type RawProduct = {
   dimensions?: string
   material?: string
   technique?: string
+  sizes?: string[] | string
+  sizeLabel?: string
   images?: ({ src?: string; alt?: string } | string)[]
   video?: string | null
 }
@@ -115,6 +120,8 @@ function normalize(path: string, r: RawProduct): Product | null {
     media,
     cover,
     options: r.personalizable === false ? [commonOptions[0]] : commonOptions,
+    sizes: (Array.isArray(r.sizes) ? r.sizes : typeof r.sizes === 'string' ? r.sizes.split(',') : []).map((x) => String(x).trim()).filter(Boolean),
+    sizeLabel: r.sizeLabel || (category === 'prenda' ? 'Talla' : 'Medida'),
   }
 }
 

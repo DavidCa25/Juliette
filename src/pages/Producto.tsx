@@ -26,6 +26,8 @@ export default function Producto() {
   const [panel, setPanel] = useState('detalles')
   const [idea, setIdea] = useState('')
   const [ideaError, setIdeaError] = useState(false)
+  const [size, setSize] = useState('')
+  const [sizeError, setSizeError] = useState(false)
 
   usePageMeta(product?.name ?? 'Pieza no encontrada', product?.description)
   useEffect(() => {
@@ -45,17 +47,26 @@ export default function Producto() {
     { id: 'entrega', title: 'Entrega y pedidos', body: `Envíos a ${site.shippingZone} y entrega local en ${site.pickupPoint}.\nPersonalizados: anticipo de [${site.depositPercent}%] para iniciar el boceto.` },
   ]
 
+  const needsSize = product.sizes.length > 0
+  const sizeText = needsSize && size ? `${product.sizeLabel} ${size}` : undefined
+
   function addToCart() {
+    if (needsSize && !size) {
+      setSizeError(true)
+      document.getElementById('jl-size')?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+      return
+    }
     if (option.needsIdea && !idea.trim()) {
       setIdeaError(true)
       document.getElementById('jl-idea')?.focus()
       return
     }
-    add({ kind: 'product', slug: product!.slug, name: product!.name, image: firstImage, optionId: option.id, optionLabel: option.label, unitPrice, idea: option.needsIdea ? idea.trim() : undefined, qty: 1 })
+    add({ kind: 'product', slug: product!.slug, name: product!.name, image: firstImage, optionId: option.id, optionLabel: option.label, unitPrice, idea: option.needsIdea ? idea.trim() : undefined, size: sizeText, qty: 1 })
   }
 
   function askWhatsApp() {
     const lines = [`Hola, Julietté. Me interesa la pieza ${product!.name} (${product!.code}).`, `Personalización: ${option.label}`]
+    if (sizeText) lines.push(sizeText)
     if (option.needsIdea && idea.trim()) lines.push(`Mi idea: ${idea.trim()}`)
     track('whatsapp_click', { from: 'producto', slug: product!.slug })
     openWhatsApp(lines.join('\n'))
@@ -118,6 +129,29 @@ export default function Producto() {
               </div>
               <p className="m-0 text-[16px] leading-[1.75] max-w-[520px]">{product.description}</p>
             </div>
+
+            {needsSize && (
+              <fieldset id="jl-size" className="m-0 p-0 border-0 flex flex-col gap-3">
+                <legend className="pb-[14px] jl-label tracking-[3px]">{product.sizeLabel}</legend>
+                <div className="flex flex-wrap gap-2">
+                  {product.sizes.map((x) => (
+                    <button
+                      key={x}
+                      type="button"
+                      aria-pressed={size === x}
+                      onClick={() => {
+                        setSize(x)
+                        setSizeError(false)
+                      }}
+                      className={`jl-opt min-h-[46px] min-w-[54px] px-4 rounded-full border text-[14px] font-semibold cursor-pointer transition-colors ${size === x ? 'bg-borgona text-crema border-borgona' : 'bg-transparent text-borgona border-borgona/40 hover:border-borgona'}`}
+                    >
+                      {x}
+                    </button>
+                  ))}
+                </div>
+                {sizeError && <p role="alert" className="m-0 text-[13px] font-semibold">Elige una {product.sizeLabel.toLowerCase()} para continuar.</p>}
+              </fieldset>
+            )}
 
             <fieldset className="m-0 p-0 border-0 flex flex-col">
               <legend className="pb-[14px] jl-label tracking-[3px]">Personalización</legend>

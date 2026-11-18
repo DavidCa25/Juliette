@@ -56,6 +56,17 @@ export function ProductEditor({ product, isNew, onChange, onClose, onDelete }: {
         <Text label="Técnica" value={product.technique} onChange={(v) => set('technique', v)} />
       </div>
 
+      <div className="grid grid-cols-1 lg:grid-cols-[220px_1fr] gap-x-10 gap-y-6">
+        <Select label="El cliente elige" value={product.sizeLabel} onChange={(v) => set('sizeLabel', v)} options={[{ value: 'Talla', label: 'Talla' }, { value: 'Medida', label: 'Medida' }, { value: 'Tamaño', label: 'Tamaño' }]} />
+        <Text
+          label={`Opciones de ${product.sizeLabel.toLowerCase()}`}
+          value={product.sizes.join(', ')}
+          onChange={(v) => set('sizes', v.split(',').map((x) => x.trim()).filter(Boolean))}
+          placeholder={product.sizeLabel === 'Talla' ? 'Ej. XS, S, M, L, XL' : 'Ej. 20 × 25 cm, 30 × 40 cm'}
+          hint="Sepáralas con comas. Déjalo vacío si la pieza tiene una sola medida; si lo llenas, el cliente tiene que elegir una."
+        />
+      </div>
+
       <div className="flex flex-col">
         <Toggle label="Mostrar en el inicio" checked={product.featured} onChange={(v) => set('featured', v)} hint="El inicio muestra las dos primeras piezas destacadas." />
         <Toggle label="Acepta personalización" checked={product.personalizable} onChange={(v) => set('personalizable', v)} hint="Permite pedirla con nombre, frase o diseño a medida." />

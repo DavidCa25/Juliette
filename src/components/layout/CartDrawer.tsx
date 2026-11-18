@@ -2,16 +2,18 @@ import { useEffect, useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { useCart, type CartLine } from '../../state/cart'
 import { money } from '../../lib/format'
+import { fitLabel } from '../../data/design'
 import { Arrow, btnPrimary } from '../ui'
 
 export function LineSummary({ line }: { line: CartLine }) {
   return line.kind === 'product' ? (
     <span className="text-[13px]">
+      {line.size ? `${line.size} · ` : ''}
       {line.optionLabel}
       {line.idea ? ` · “${line.idea}”` : ''}
     </span>
   ) : (
-    <span className="text-[13px]">Pieza creada por ti · se cotiza con boceto</span>
+    <span className="text-[13px]">{line.design.fit ? `${fitLabel(line.design.surface)} ${line.design.fit} · ` : ''}Pieza creada por ti · se cotiza con boceto</span>
   )
 }
 

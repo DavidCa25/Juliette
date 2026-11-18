@@ -14,6 +14,7 @@ export type MailItem = {
   unitPrice: number | null
   optionLabel?: string
   idea?: string | null
+  size?: string | null
   kind?: string
   details?: string[]
   previewUrl?: string | null
@@ -126,6 +127,7 @@ function itemsTable(o: MailOrder, opts: { owner: boolean }) {
       ].filter(Boolean)
       const main = `<td valign="top" ${img ? '' : 'colspan="2"'} style="padding:16px 0 12px;font-size:14px;line-height:1.5">
     <strong style="font-size:15px">${i.qty} × ${esc(i.name)}</strong>
+    ${i.size ? `<br><span style="font-size:13px"><strong>${esc(i.size)}</strong></span>` : ''}
     ${i.optionLabel ? `<br><span style="font-size:13px">${esc(i.optionLabel)}</span>` : ''}
     ${i.idea ? `<br><span style="font-size:13px">“${esc(i.idea)}”</span>` : ''}
     <br><span style="font-size:13px;font-weight:600">${i.kind === 'custom' ? 'Se cotiza con boceto' : price}</span>
@@ -148,6 +150,19 @@ function deliveryText(o: MailOrder) {
     : 'Entrega en persona (punto de entrega en ' + (filled(shopSettings().city) ? esc(shopSettings().city) : 'la ciudad') + ')'
 }
 
+/** Tiempos publicados en Ajustes (elaboración y envío), según el tipo de piezas del pedido. */
+function timeBlock(items: MailItem[]) {
+  const s = shopSettings()
+  const hasCustom = items.some((i) => i.kind === 'custom')
+  const hasReady = items.some((i) => i.kind !== 'custom')
+  const lines: string[] = []
+  if (hasCustom && filled(s.leadDaysCustom)) lines.push(`<strong>Elaboración:</strong> ${esc(s.leadDaysCustom)} días hábiles tras aprobar tu boceto.`)
+  if (filled(s.readyShipDays))
+    lines.push(`<strong>Envío:</strong> ${hasReady && !hasCustom ? 'tu pieza se envía' : hasCustom ? 'ya terminada, tu pieza se envía' : 'se envía'} en ${esc(s.readyShipDays)} días hábiles${hasReady && !hasCustom ? ' tras confirmar el pago' : ''}.`)
+  if (!lines.length) return ''
+  return `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${CREAM};border-radius:14px"><tr><td style="padding:14px 18px;font-size:14px;line-height:1.8">${lines.join('<br>')}</td></tr></table>`
+}
+
 /** Pasos que siguen, con el anticipo y los tiempos publicados en Ajustes. */
 function nextSteps(o: MailOrder) {
   const s = shopSettings()
@@ -160,8 +175,9 @@ function nextSteps(o: MailOrder) {
     steps.push('Recibes tu boceto. Lo ajustamos contigo hasta que te encante.')
     steps.push(`Al aprobarlo${deposit ? `, se aparta tu lugar con un anticipo del ${deposit}` : ', confirmamos el pago'}.`)
     steps.push(`Pintamos tu pieza a mano${filled(s.leadDaysCustom) ? ` en ${esc(s.leadDaysCustom)} días hábiles` : ''}.`)
+    if (filled(s.readyShipDays)) steps.push(`Ya terminada, la enviamos en ${esc(s.readyShipDays)} días hábiles.`)
   }
-  if (hasReady) steps.push(`Las piezas listas se entregan${filled(s.readyShipDays) ? ` en ${esc(s.readyShipDays)} días hábiles` : ' en pocos días'} tras confirmar el pago.`)
+  if (hasReady) steps.push(`Las piezas listas se envían${filled(s.readyShipDays) ? ` en ${esc(s.readyShipDays)} días hábiles` : ' en pocos días'} tras confirmar el pago.`)
   steps.push(o.delivery === 'envio' ? 'Te enviamos la guía de rastreo cuando salga del taller.' : 'Acordamos contigo el día y el punto de entrega.')
   const list = steps
     .map(
@@ -259,8 +275,7 @@ export function statusEmail(o: { id: string; customer_name: string; items?: Mail
     : `<tr><td style="padding:18px 0 0;font-size:14px">Pedido <strong>${esc(o.id)}</strong></td></tr>`
   const insta = filled(s.instagram?.handle) && s.instagram?.url ? s.instagram : null
   let extra = ''
-  if (status === 'confirmado' && filled(s.leadDaysCustom) && o.items?.some((i) => i.kind === 'custom'))
-    extra = section('Tiempo estimado', `<p style="margin:0;font-size:14px;line-height:1.7">Las piezas a medida toman ${esc(s.leadDaysCustom)} días hábiles de elaboración, más el tiempo de entrega.</p>`)
+  if ((status === 'confirmado' || status === 'en-proceso') && o.items?.length && timeBlock(o.items)) extra = section('Tiempo estimado', timeBlock(o.items))
   if (status === 'enviado' || status === 'entregado') extra = section('Cuidados de tu pieza', careList())
   if (status === 'entregado' && insta)
     extra += `<tr><td style="padding:22px 0 0;font-size:14px;line-height:1.7">Si compartes tu pieza en redes, etiquétanos en <strong>${esc(insta.handle)}</strong>. Nos encanta verlas en su nueva vida.</td></tr><tr><td style="padding:16px 0 0">${button(safeUrl(insta.url), 'Ver Instagram', false)}</td></tr>`

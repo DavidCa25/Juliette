@@ -1,6 +1,6 @@
 /** Opciones de la experiencia "Diseña la tuya". */
-export type SurfaceId = 'tote-natural' | 'tote-negra' | 'tote-mezclilla' | 'chamarra' | 'cuadro' | 'agenda'
-export type SurfaceKind = 'tote' | 'chamarra' | 'cuadro' | 'agenda'
+export type SurfaceId = 'tote-natural' | 'tote-negra' | 'tote-mezclilla' | 'sudadera-beige' | 'sudadera-negra' | 'cuadro' | 'agenda'
+export type SurfaceKind = 'tote' | 'sudadera' | 'cuadro' | 'agenda'
 
 export type Surface = {
   id: SurfaceId
@@ -17,7 +17,8 @@ export const surfaces: Surface[] = [
   { id: 'tote-natural', name: 'Tote natural', sub: 'Lona de algodón beige', kind: 'tote', fabric: '#f4ecdf', trim: '#eee4d2', stitch: '#d9ccb5', dark: false },
   { id: 'tote-negra', name: 'Tote negra', sub: 'Lona de algodón negra', kind: 'tote', fabric: '#2b2626', trim: '#231f1f', stitch: '#4a4242', dark: true },
   { id: 'tote-mezclilla', name: 'Tote de mezclilla', sub: 'Mezclilla azul', kind: 'tote', fabric: '#557597', trim: '#4a6a8c', stitch: '#d9a441', dark: true },
-  { id: 'chamarra', name: 'Chamarra', sub: 'Mezclilla, pintada en la espalda', kind: 'chamarra', fabric: '#5b7ca1', trim: '#4b6b90', stitch: '#d9a441', dark: true },
+  { id: 'sudadera-beige', name: 'Sudadera beige', sub: 'Con gorro, algodón afelpado', kind: 'sudadera', fabric: '#ece1cf', trim: '#e3d6c0', stitch: '#c9b99c', dark: false },
+  { id: 'sudadera-negra', name: 'Sudadera negra', sub: 'Con gorro, algodón afelpado', kind: 'sudadera', fabric: '#2c2828', trim: '#242020', stitch: '#4b4343', dark: true },
   { id: 'cuadro', name: 'Cuadro', sub: 'Lienzo en bastidor', kind: 'cuadro', fabric: '#fbf7f0', trim: '#b08a5e', stitch: '#e7dfd2', dark: false },
   { id: 'agenda', name: 'Agenda', sub: 'Portada de tela pintada', kind: 'agenda', fabric: '#efe4d2', trim: '#e0d1b9', stitch: '#c9b79a', dark: false },
 ]
@@ -40,6 +41,8 @@ export type Design = {
   occasion: string
   date: string
   notes: string
+  /** Talla de la prenda, medida del cuadro o tamaño de la agenda */
+  fit: string
   /** Imagen de referencia (data URL reducido) */
   reference: string | null
 }
@@ -56,6 +59,7 @@ export const defaultDesign: Design = {
   occasion: '',
   date: '',
   notes: '',
+  fit: '',
   reference: null,
 }
 
@@ -95,6 +99,15 @@ export const sizes: { id: SizeId; name: string; scale: number }[] = [
 
 export const occasions = ['Para mí', 'Cumpleaños', 'Aniversario', 'Graduación', 'Regalo especial', 'Otra ocasión']
 
+/** Talla, medida o tamaño que se pide según la pieza (las totes tienen una sola medida). */
+export const fitOptions: Partial<Record<SurfaceKind, { label: string; options: string[]; hint: string }>> = {
+  sudadera: { label: 'Talla', options: ['XS', 'S', 'M', 'L', 'XL', 'XXL', 'Llevo mi propia prenda'], hint: 'Si ya tienes la prenda que quieres pintar, elige "Llevo mi propia prenda".' },
+  cuadro: { label: 'Medida', options: ['20 × 25 cm', '30 × 40 cm', '40 × 50 cm', '50 × 70 cm'], hint: 'Medida del lienzo en bastidor.' },
+  agenda: { label: 'Tamaño', options: ['A6 · 10.5 × 14.8 cm', 'A5 · 14.8 × 21 cm'], hint: 'Tapa de tela pintada a mano.' },
+}
+export const fitFor = (id: SurfaceId) => fitOptions[surfaces.find((s) => s.id === id)?.kind ?? 'tote']
+export const fitLabel = (id: SurfaceId) => fitFor(id)?.label ?? 'Medida'
+
 export function describeDesign(d: Design) {
   const m = motifs.find((x) => x.id === d.motif)?.name ?? d.motif
   const p = palettes.find((x) => x.id === d.palette)?.name ?? d.palette
@@ -102,11 +115,12 @@ export function describeDesign(d: Design) {
   const sf = surfaces.find((x) => x.id === d.surface)
   const lines = [
     `Pieza: ${sf ? `${sf.name} (${sf.sub.toLowerCase()})` : d.surface}`,
+    d.fit ? (d.fit === 'Llevo mi propia prenda' ? 'Prenda: la entrega el cliente' : `${fitLabel(d.surface)}: ${d.fit}`) : '',
     `Motivo: ${m}`,
     `Paleta: ${p}`,
     `Tamaño: ${sizes.find((s) => s.id === d.size)?.name}`,
     d.text ? `Texto: "${d.text}" (${f}, ${d.placement})` : 'Sin texto',
-    sf?.kind === 'cuadro' || sf?.kind === 'chamarra' ? '' : d.back ? 'Frente y reverso' : 'Solo frente',
+    sf?.kind === 'cuadro' ? '' : d.back ? 'Frente y reverso' : 'Solo frente',
   ]
   if (d.occasion) lines.push(`Ocasión: ${d.occasion}`)
   if (d.date) lines.push(`Fecha deseada: ${d.date}`)

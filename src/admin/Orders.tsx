@@ -52,6 +52,7 @@ function OrderDetail({ order, onSaved }: { order: Order; onSaved: (o: Order) => 
               )}
               <span className="flex-1 min-w-0">
                 <strong>{i.qty} × {i.name}</strong>
+                {i.size && <span> · {i.size}</span>}
                 {i.optionLabel && <span> · {i.optionLabel}</span>}
                 {i.idea && <span className="block text-[13px]">“{i.idea}”</span>}
                 {i.details?.length ? (

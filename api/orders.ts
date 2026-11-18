@@ -57,7 +57,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const p = cat.get(slug)
       const optionId = str(i.optionId, 20)
       const unitPrice = p && p.price !== null && optionId === 'sin' ? p.price : null
-      return { kind: 'product', slug, name: p?.name ?? str(i.name, 80), optionId, optionLabel: str(i.optionLabel, 80), idea: str(i.idea, 400) || null, qty, unitPrice }
+      return { kind: 'product', slug, name: p?.name ?? str(i.name, 80), optionId, optionLabel: str(i.optionLabel, 80), idea: str(i.idea, 400) || null, size: str(i.size, 40) || null, qty, unitPrice }
     }
     const details = Array.isArray(i.details) ? i.details.slice(0, 14).map((d) => str(d, 220)).filter(Boolean) : []
     return {

@@ -104,7 +104,7 @@ export function MotifArt({ motif, colors, reference, onDark = false }: { motif: 
 /** Zona pintable de cada tipo de pieza: centro, posiciones del texto y escala del motivo. */
 const geometry: Record<SurfaceKind, { cy: number; text: Record<'arriba' | 'centro' | 'abajo', number>; k: number; up: number; down: number }> = {
   tote: { cy: 455, text: { arriba: 318, centro: 455, abajo: 612 }, k: 1, up: 490, down: 425 },
-  chamarra: { cy: 430, text: { arriba: 318, centro: 430, abajo: 560 }, k: 0.92, up: 460, down: 405 },
+  sudadera: { cy: 362, text: { arriba: 284, centro: 362, abajo: 440 }, k: 0.62, up: 382, down: 338 },
   cuadro: { cy: 360, text: { arriba: 200, centro: 360, abajo: 530 }, k: 1, up: 395, down: 330 },
   agenda: { cy: 395, text: { arriba: 238, centro: 395, abajo: 560 }, k: 0.8, up: 425, down: 370 },
 }
@@ -120,17 +120,19 @@ function adaptColors(colors: [string, string, string], dark: boolean): [string, 
 
 /** Contorno pintable de cada pieza (para recortar la textura que se pone encima de la pintura). */
 const TOTE_BODY = 'M138 228 H462 L474 660 Q475 676 459 676 H141 Q125 676 126 660 Z'
-const JACKET_BODY =
-  'M210 132 Q300 160 390 132 L468 168 Q514 186 534 244 L572 560 Q575 580 556 584 L506 590 Q490 591 488 575 L466 340 L468 632 Q468 652 448 652 H152 Q132 652 132 632 L134 340 L112 575 Q110 591 94 590 L44 584 Q25 580 28 560 L66 244 Q86 186 132 168 Z'
+const SWEAT_BODY =
+  'M190 196 Q150 200 128 214 Q84 236 72 290 L36 560 L32 596 Q31 612 48 614 L94 618 Q110 619 112 602 L132 380 L130 616 Q130 626 140 626 H460 Q470 626 470 616 L468 380 L488 602 Q490 619 506 618 L552 614 Q569 612 568 596 L564 560 L528 290 Q516 236 472 214 Q450 200 410 196 Q360 250 300 252 Q240 250 190 196 Z'
+const HOOD_OUTER = 'M180 206 Q166 82 300 66 Q434 82 420 206 Q384 246 300 252 Q216 246 180 206 Z'
+const HOOD_INNER = 'M220 200 Q214 110 300 100 Q386 110 380 200 Q352 230 300 236 Q248 230 220 200 Z'
 
 function bodyShape(kind: SurfaceKind) {
-  if (kind === 'chamarra') return <path d={JACKET_BODY} />
+  if (kind === 'sudadera') return <path d={SWEAT_BODY} />
   if (kind === 'cuadro') return <rect x={136} y={102} width={328} height={512} />
   if (kind === 'agenda') return <rect x={168} y={156} width={268} height={506} rx={14} />
   return <path d={TOTE_BODY} />
 }
 
-type Ids = Record<'weave' | 'noise' | 'twill' | 'grain' | 'side' | 'top' | 'soft' | 'paint' | 'clip' | 'wood' | 'pages' | 'strap' | 'elastic', string>
+type Ids = Record<'rib' | 'weave' | 'noise' | 'twill' | 'grain' | 'side' | 'top' | 'soft' | 'paint' | 'clip' | 'wood' | 'pages' | 'strap' | 'elastic', string>
 
 /** Etiqueta tejida con el isotipo real, cosida a la pieza. */
 function BrandLabel({ x, y, w, h, bg, fg, stitch, r = 0 }: { x: number; y: number; w: number; h: number; bg: string; fg: string; stitch: string; r?: number }) {
@@ -191,86 +193,74 @@ function StrapEnd({ x, s }: { x: number; s: Surface }) {
 
 function SurfaceBase({ s, showPedestal, id }: { s: Surface; showPedestal: boolean; id: Ids }) {
   const pedestal = showPedestal && <Pedestal />
-  const isDenim = s.id === 'tote-mezclilla' || s.kind === 'chamarra'
+  const isDenim = s.id === 'tote-mezclilla'
   const tex = isDenim ? { fill: `url(#${id.twill})` } : { fill: '#fff', filter: `url(#${id.noise})` }
 
-  if (s.kind === 'chamarra') {
-    const brass = '#c8933f'
+  if (s.kind === 'sudadera') {
+    const label = s.dark ? { bg: '#fdf6ee', fg: '#82001a', stitch: '#82001a' } : { bg: '#82001a', fg: '#ffffff', stitch: '#ffffff' }
+    const cuffL = 'M33 566 L113 576 L110 604 Q108 618 93 617 L47 613 Q31 611 31 595 Z'
+    const cuffR = 'M567 566 L487 576 L490 604 Q492 618 507 617 L553 613 Q569 611 569 595 Z'
+    const pocket = 'M206 462 H394 L426 560 Q428 568 420 568 H180 Q172 568 174 560 Z'
+    const shade = s.dark ? 0.35 : 0.12
     return (
       <g>
-        {/* Gancho y gancho de madera */}
-        <path d="M300 112 V80 Q300 58 320 58 Q340 58 340 78" fill="none" stroke="#9a9a9a" strokeWidth={4.5} strokeLinecap="round" />
-        <path d="M300 80 V74" stroke="#cfcfcf" strokeWidth={2} strokeLinecap="round" />
-        <path d="M150 158 Q300 100 450 158" fill="none" stroke="#000" strokeOpacity={0.25} strokeWidth={13} strokeLinecap="round" transform="translate(2 4)" />
-        <path d="M150 158 Q300 100 450 158" fill="none" stroke={`url(#${id.wood})`} strokeWidth={13} strokeLinecap="round" />
-        {/* Cuerpo */}
-        <path d={JACKET_BODY} fill="#000" opacity={0.22} transform="translate(5 9)" filter={`url(#${id.soft})`} />
-        <path d={JACKET_BODY} fill={s.fabric} />
-        <path d={JACKET_BODY} fill={`url(#${id.twill})`} />
-        <path d={JACKET_BODY} fill={`url(#${id.side})`} />
-        <path d={JACKET_BODY} fill={`url(#${id.top})`} />
-        {/* Desgaste claro al centro, típico de la mezclilla */}
-        <ellipse cx={300} cy={430} rx={120} ry={170} fill="#fff" opacity={0.07} filter={`url(#${id.soft})`} />
-        {/* Mangas: pliegues y costuras */}
+        {/* Sombra general */}
+        <path d={SWEAT_BODY} fill="#000" opacity={0.26} transform="translate(6 10)" filter={`url(#${id.soft})`} />
+        {/* Cuerpo afelpado */}
+        <path d={SWEAT_BODY} fill={s.fabric} />
+        <path d={SWEAT_BODY} fill="#fff" filter={`url(#${id.noise})`} />
+        <path d={SWEAT_BODY} fill={`url(#${id.side})`} />
+        <path d={SWEAT_BODY} fill={`url(#${id.top})`} />
         <g fill="none" strokeLinecap="round" filter={`url(#${id.soft})`}>
-          <path d="M84 300 Q74 420 66 540" stroke="#000" strokeOpacity={0.14} strokeWidth={10} />
-          <path d="M516 300 Q526 420 534 540" stroke="#000" strokeOpacity={0.14} strokeWidth={10} />
-          <path d="M100 330 Q94 430 88 520" stroke="#fff" strokeOpacity={0.12} strokeWidth={6} />
-          <path d="M500 330 Q506 430 512 520" stroke="#fff" strokeOpacity={0.12} strokeWidth={6} />
+          <path d="M88 320 Q78 440 70 550" stroke="#000" strokeOpacity={shade + 0.04} strokeWidth={12} />
+          <path d="M512 320 Q522 440 530 550" stroke="#000" strokeOpacity={shade + 0.04} strokeWidth={12} />
+          <path d="M102 340 Q96 440 92 530" stroke="#fff" strokeOpacity={s.dark ? 0.06 : 0.25} strokeWidth={7} />
+          <path d="M498 340 Q504 440 508 530" stroke="#fff" strokeOpacity={s.dark ? 0.06 : 0.25} strokeWidth={7} />
+          <ellipse cx={300} cy={360} rx={110} ry={130} fill="#fff" opacity={s.dark ? 0.03 : 0.1} stroke="none" />
         </g>
-        <path d="M134 340 L134 300 M466 340 L466 300" stroke="#000" strokeOpacity={0.18} strokeWidth={2} />
-        <g fill="none" stroke={s.stitch} strokeWidth={1.4} strokeDasharray="4 3.5">
-          <path d="M138 300 V630 M462 300 V630" />
-          <path d="M70 250 L48 556 M530 250 L552 556" />
+        {/* Hombro caído y costura de manga */}
+        <path d="M150 206 Q122 290 132 380 M450 206 Q478 290 468 380" fill="none" stroke="#000" strokeOpacity={shade + 0.04} strokeWidth={2} />
+        <g fill="none" stroke={s.stitch} strokeWidth={1.2} strokeDasharray="3 3" opacity={0.9}>
+          <path d="M155 208 Q128 290 137 380 M445 208 Q472 290 463 380" />
         </g>
-        {/* Puños con botón */}
-        <path d="M31 540 L113 552 L112 575 Q110 591 94 590 L44 584 Q25 580 28 560 Z" fill={s.trim} />
-        <path d="M569 540 L487 552 L488 575 Q490 591 506 590 L556 584 Q575 580 572 560 Z" fill={s.trim} />
-        <g fill="none" stroke={s.stitch} strokeWidth={1.3} strokeDasharray="3.5 3">
-          <path d="M33 548 L111 559 M567 548 L489 559" />
+        {/* Bolsa canguro */}
+        <path d={pocket} fill="#000" opacity={shade * 0.6} transform="translate(0 4)" filter={`url(#${id.soft})`} />
+        <path d={pocket} fill={s.fabric} />
+        <path d={pocket} fill="#fff" filter={`url(#${id.noise})`} />
+        <path d={pocket} fill={`url(#${id.top})`} />
+        <path d="M206 462 L174 560 M394 462 L426 560" stroke="#000" strokeOpacity={shade + 0.12} strokeWidth={3} strokeLinecap="round" />
+        <path d="M206 462 H394" stroke="#fff" strokeOpacity={s.dark ? 0.08 : 0.35} strokeWidth={1.5} />
+        <g fill="none" stroke={s.stitch} strokeWidth={1.2} strokeDasharray="3 3">
+          <path d="M210 468 H390 M213 470 L183 562 M387 470 L417 562" />
         </g>
-        <circle cx={96} cy={574} r={5.5} fill={brass} />
-        <circle cx={504} cy={574} r={5.5} fill={brass} />
-        {/* Canesú en pico con doble pespunte */}
-        <path d="M70 232 L300 274 L530 232" fill="none" stroke="#000" strokeOpacity={0.22} strokeWidth={2.5} />
-        <g fill="none" stroke={s.stitch} strokeWidth={1.5} strokeDasharray="4.5 3.5">
-          <path d="M71 240 L300 282 L529 240" />
-          <path d="M72 247 L300 289 L528 247" />
-        </g>
-        {/* Paneles de la espalda */}
-        <g fill="none">
-          <path d="M214 293 V610 M386 293 V610" stroke="#000" strokeOpacity={0.16} strokeWidth={2} />
-          <g stroke={s.stitch} strokeWidth={1.4} strokeDasharray="4.5 3.5">
-            <path d="M220 292 V610 M380 292 V610" />
-          </g>
-        </g>
-        {/* Cuello */}
-        <path d="M206 132 Q300 196 394 132 Q372 104 300 100 Q228 104 206 132 Z" fill="#000" opacity={0.2} transform="translate(0 6)" />
-        <path d="M206 132 Q300 194 394 132 Q372 104 300 100 Q228 104 206 132 Z" fill={s.trim} />
-        <path d="M206 132 Q300 194 394 132 Q372 104 300 100 Q228 104 206 132 Z" fill={`url(#${id.twill})`} />
-        <path d="M216 134 Q300 184 384 134" fill="none" stroke={s.stitch} strokeWidth={1.4} strokeDasharray="4 3" />
-        {/* Pretina con ajustadores */}
-        <rect x={132} y={606} width={336} height={46} fill="#000" opacity={0.15} transform="translate(0 -3)" />
-        <rect x={132} y={608} width={336} height={44} fill={s.trim} />
-        <rect x={132} y={608} width={336} height={44} fill={`url(#${id.twill})`} />
-        <g fill="none" stroke={s.stitch} strokeWidth={1.4} strokeDasharray="4 3">
-          <path d="M134 614 H466 M134 646 H466" />
-        </g>
-        {[178, 422].map((cx) => (
-          <g key={cx}>
-            <rect x={cx - 24} y={616} width={48} height={24} rx={3} fill={s.trim} stroke="#000" strokeOpacity={0.2} />
-            <circle cx={cx + (cx < 300 ? 14 : -14)} cy={628} r={6} fill={brass} />
-            <circle cx={cx + (cx < 300 ? 14 : -14)} cy={628} r={2.2} fill="#7a5520" />
+        {/* Puños de punto */}
+        {[cuffL, cuffR].map((d) => (
+          <g key={d}>
+            <path d={d} fill={s.trim} />
+            <path d={d} fill={`url(#${id.rib})`} />
+            <path d={d} fill="#000" opacity={0.08} />
           </g>
         ))}
-        {/* Parche de piel con el isotipo grabado */}
-        <g>
-          <rect x={312} y={612} width={50} height={36} rx={3} fill="#000" opacity={0.25} transform="translate(1.5 2)" />
-          <rect x={312} y={612} width={50} height={36} rx={3} fill="#82001a" />
-          <rect x={312} y={612} width={50} height={36} rx={3} fill={`url(#${id.grain})`} opacity={0.35} />
-          <rect x={315} y={615} width={44} height={30} rx={2} fill="none" stroke="#ffffff" strokeWidth={0.9} strokeDasharray="2 2" opacity={0.8} />
-          <Isotipo x={325} y={616} width={24} height={28} color="#ffffff" />
-        </g>
+        {/* Pretina de punto */}
+        <rect x={130} y={576} width={340} height={6} fill="#000" opacity={shade} />
+        <path d="M130 580 H470 V616 Q470 626 460 626 H140 Q130 626 130 616 Z" fill={s.trim} />
+        <path d="M130 580 H470 V616 Q470 626 460 626 H140 Q130 626 130 616 Z" fill={`url(#${id.rib})`} />
+        <path d="M130 580 H470" stroke="#fff" strokeOpacity={s.dark ? 0.08 : 0.35} strokeWidth={1.5} />
+        {/* Gorro: exterior, interior y cruce al frente */}
+        <path d={HOOD_OUTER} fill="#000" opacity={0.25} transform="translate(0 6)" filter={`url(#${id.soft})`} />
+        <path d={HOOD_OUTER} fill={s.fabric} />
+        <path d={HOOD_OUTER} fill="#fff" filter={`url(#${id.noise})`} />
+        <path d={HOOD_OUTER} fill={`url(#${id.side})`} />
+        <path d={HOOD_INNER} fill={s.trim} />
+        <path d={HOOD_INNER} fill="#000" opacity={s.dark ? 0.45 : 0.16} />
+        <path d="M232 120 Q300 92 368 120" fill="none" stroke="#000" strokeOpacity={s.dark ? 0.35 : 0.12} strokeWidth={10} filter={`url(#${id.soft})`} />
+        <path d="M300 100 V236" stroke="#000" strokeOpacity={shade} strokeWidth={1.5} />
+        <path d="M222 204 Q262 236 312 262 L300 252 Q250 236 222 204 Z" fill="#000" opacity={shade + 0.05} />
+        <path d="M378 204 Q338 238 290 264" fill="none" stroke={s.fabric} strokeWidth={10} strokeLinecap="round" />
+        <path d="M378 204 Q338 238 290 264" fill="none" stroke="#000" strokeOpacity={shade} strokeWidth={1.5} transform="translate(0 6)" />
+        <path d="M222 204 Q260 232 300 250" fill="none" stroke={s.stitch} strokeWidth={1.2} strokeDasharray="3 3" />
+        {/* Etiqueta tejida con el isotipo real */}
+        <BrandLabel x={414} y={584} w={30} h={40} r={0} {...label} />
       </g>
     )
   }
@@ -405,7 +395,7 @@ function SurfaceBase({ s, showPedestal, id }: { s: Surface; showPedestal: boolea
 export const ToteCanvas = forwardRef<SVGSVGElement, { design: Design; showPedestal?: boolean }>(function ToteCanvas({ design, showPedestal = true }, ref) {
   const uid = useId().replace(/[^a-zA-Z0-9_-]/g, '')
   const id = Object.fromEntries(
-    (['weave', 'noise', 'twill', 'grain', 'side', 'top', 'soft', 'paint', 'clip', 'wood', 'pages', 'strap', 'elastic'] as const).map((k) => [k, `jl-${k}-${uid}`]),
+    (['rib', 'weave', 'noise', 'twill', 'grain', 'side', 'top', 'soft', 'paint', 'clip', 'wood', 'pages', 'strap', 'elastic'] as const).map((k) => [k, `jl-${k}-${uid}`]),
   ) as Ids
   const surface = surfaces.find((x) => x.id === design.surface) ?? surfaces[0]
   const g = geometry[surface.kind]
@@ -420,8 +410,8 @@ export const ToteCanvas = forwardRef<SVGSVGElement, { design: Design; showPedest
   const len = Math.max(design.text.length, 1)
   const fontSize = Math.round(Math.min(soloTexto ? 72 : 54, Math.max(24, (soloTexto ? 560 : 470) / len)) * (font.id === 'script' ? 1.25 : 1) * (font.id === 'moderna' ? 0.78 : 1) * (surface.kind === 'agenda' ? 0.82 : 1))
   const label = `Vista previa de tu pieza (${surface.name}): motivo ${design.motif}, paleta ${design.palette}${hasText ? `, con el texto ${design.text}` : ''}`
-  const showBack = design.back && surface.kind !== 'cuadro' && surface.kind !== 'chamarra'
-  const isDenim = surface.id === 'tote-mezclilla' || surface.kind === 'chamarra'
+  const showBack = design.back && surface.kind !== 'cuadro'
+  const isDenim = surface.id === 'tote-mezclilla'
   const cx = surface.kind === 'agenda' ? 312 : 300
 
   return (
@@ -431,6 +421,11 @@ export const ToteCanvas = forwardRef<SVGSVGElement, { design: Design; showPedest
         <pattern id={id.weave} width={3} height={3} patternUnits="userSpaceOnUse">
           <rect width={3} height={1} fill="#000" opacity={surface.dark ? 0.05 : 0.035} />
           <rect width={1} height={3} fill="#fff" opacity={surface.dark ? 0.025 : 0.06} />
+        </pattern>
+        {/* Puño y pretina de punto acanalado */}
+        <pattern id={id.rib} width={5} height={8} patternUnits="userSpaceOnUse">
+          <rect width={2.2} height={8} fill="#000" opacity={surface.dark ? 0.22 : 0.07} />
+          <rect x={2.6} width={1.2} height={8} fill="#fff" opacity={surface.dark ? 0.05 : 0.22} />
         </pattern>
         {/* Sarga de mezclilla: diagonales claras y oscuras */}
         <pattern id={id.twill} width={6} height={6} patternUnits="userSpaceOnUse" patternTransform="rotate(-38)">

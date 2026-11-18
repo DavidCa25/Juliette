@@ -30,6 +30,8 @@ function normalize(p: Partial<AdminProduct> & { slug: string }): AdminProduct {
     dimensions: p.dimensions ?? '',
     material: p.material ?? '',
     technique: p.technique ?? 'Pintura a mano',
+    sizes: Array.isArray(p.sizes) ? p.sizes : [],
+    sizeLabel: p.sizeLabel || (p.category === 'prenda' ? 'Talla' : 'Medida'),
     images: (p.images ?? []).map((i) => (typeof i === 'string' ? { src: i, alt: '' } : { src: i.src, alt: i.alt ?? '' })),
     video: p.video ?? null,
   }

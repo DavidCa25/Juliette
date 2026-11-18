@@ -29,7 +29,7 @@ export const ORDER_KEY = 'jl-last-order'
 
 function lineText(l: CartLine) {
   if (l.kind === 'product') {
-    return `• ${l.qty} × ${l.name} — ${l.optionLabel}${l.idea ? ` (“${l.idea}”)` : ''} — ${l.unitPrice === null ? 'por confirmar' : money(l.unitPrice * l.qty)}`
+    return `• ${l.qty} × ${l.name}${l.size ? ` (${l.size})` : ''} — ${l.optionLabel}${l.idea ? ` (“${l.idea}”)` : ''} — ${l.unitPrice === null ? 'por confirmar' : money(l.unitPrice * l.qty)}`
   }
   return [`• ${l.qty} × ${l.name} — se cotiza con boceto`, ...describeDesign(l.design).map((d) => `   – ${d}`)].join('\n')
 }
@@ -122,7 +122,7 @@ export default function Checkout() {
           gift: f.gift,
           items: lines.map((l) =>
             l.kind === 'product'
-              ? { kind: 'product', slug: l.slug, name: l.name, optionId: l.optionId, optionLabel: l.optionLabel, idea: l.idea, qty: l.qty }
+              ? { kind: 'product', slug: l.slug, name: l.name, optionId: l.optionId, optionLabel: l.optionLabel, idea: l.idea, size: l.size, qty: l.qty }
               : {
                   kind: 'custom',
                   name: l.name,

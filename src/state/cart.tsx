@@ -13,6 +13,8 @@ export type ProductLine = {
   optionLabel: string
   unitPrice: number | null
   idea?: string
+  /** Talla o medida elegida, con su etiqueta (ej. "Talla M") */
+  size?: string
   qty: number
 }
 
@@ -44,7 +46,7 @@ function reducer(state: CartLine[], a: Action): CartLine[] {
     case 'add': {
       if (a.line.kind === 'product') {
         const l = a.line
-        const same = state.find((x) => x.kind === 'product' && x.slug === l.slug && x.optionId === l.optionId && (x.idea ?? '') === (l.idea ?? ''))
+        const same = state.find((x) => x.kind === 'product' && x.slug === l.slug && x.optionId === l.optionId && (x.idea ?? '') === (l.idea ?? '') && (x.size ?? '') === (l.size ?? ''))
         if (same) return state.map((x) => (x === same ? { ...x, qty: Math.min(MAX_QTY, x.qty + l.qty) } : x))
       }
       return [...state, a.line]

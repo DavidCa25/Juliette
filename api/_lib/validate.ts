@@ -52,6 +52,11 @@ export function cleanProduct(p: Record<string, unknown>) {
     dimensions: str(p.dimensions, 160),
     material: str(p.material, 160),
     technique: str(p.technique, 160),
+    sizes: (Array.isArray(p.sizes) ? p.sizes : [])
+      .map((x) => str(x, 30))
+      .filter(Boolean)
+      .slice(0, 20),
+    sizeLabel: ['Talla', 'Medida', 'Tamaño'].includes(String(p.sizeLabel)) ? String(p.sizeLabel) : 'Medida',
     images,
     video: media(p.video) || null,
   }
