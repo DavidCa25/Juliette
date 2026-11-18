@@ -265,7 +265,7 @@ function Manifiesto() {
   )
 }
 
-const superficies = ['Chamarras y prendas', 'Tenis de lona', 'Estuches y accesorios', 'Lienzos y cerámica']
+const superficies = ['Chamarras y prendas', 'Estuches y accesorios', 'Lienzos y cerámica']
 
 function Superficies() {
   return (
