@@ -14,8 +14,14 @@
   "material": "Lona de algodón [gramaje], color natural",
   "technique": "Pintura textil a mano, fijada con calor",
   "images": [
-    { "src": "/media/still_bts.webp", "alt": "Tote bag Galaxia completa sobre pedestal" },
-    { "src": "/media/still_bts_detalle.webp", "alt": "Acercamiento al diseño pintado a mano" }
+    {
+      "src": "/media/still_bts.webp",
+      "alt": "Tote bag Galaxia completa sobre pedestal"
+    },
+    {
+      "src": "/media/still_bts_detalle.webp",
+      "alt": "Acercamiento al diseño pintado a mano"
+    }
   ],
   "video": "/media/bts_totebag.mp4"
 }

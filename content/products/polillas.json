@@ -14,8 +14,14 @@
   "material": "Lona de algodón [gramaje], color natural",
   "technique": "Pintura textil a mano, fijada con calor",
   "images": [
-    { "src": "/media/still_polillas.webp", "alt": "Tote bag Polillas completa sobre pedestal" },
-    { "src": "/media/still_polillas_detalle.webp", "alt": "Acercamiento a las polillas pintadas a mano" }
+    {
+      "src": "/media/still_polillas.webp",
+      "alt": "Tote bag Polillas completa sobre pedestal"
+    },
+    {
+      "src": "/media/still_polillas_detalle.webp",
+      "alt": "Acercamiento a las polillas pintadas a mano"
+    }
   ],
   "video": "/media/polillas_totebag.mp4"
 }
