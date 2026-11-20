@@ -2,7 +2,7 @@ import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState, type
 import { createPortal } from 'react-dom'
 import { Link } from 'react-router-dom'
 import { customPricing, site } from '../config/site'
-import { defaultDesign, describeDesign, fitFor, fonts, motifs, occasions, palettes, placements, sizes, surfaces, type Design } from '../data/design'
+import { defaultDesign, describeDesign, designLook, fitFor, fonts, motifs, occasions, palettes, placements, sizes, surfaces, type Design } from '../data/design'
 import { money, readJSON, writeJSON } from '../lib/format'
 import { openWhatsApp } from '../lib/whatsapp'
 import { track } from '../lib/analytics'
@@ -125,8 +125,9 @@ export default function Disena() {
   const palette = palettes.find((p) => p.id === design.palette)!.colors
   const surface = surfaces.find((x) => x.id === design.surface) ?? surfaces[0]
   const garment = surface.kind === 'sudadera'
-  const show3d = view3d && surface.kind === 'tote'
-  const designVersion = useMemo(() => JSON.stringify(design), [design])
+  // Con el estudio abierto, la vista 3D de atrás se apaga (no se ve y gastaría gráfica)
+  const show3d = view3d && surface.kind === 'tote' && !studioOpen
+  const designVersion = useMemo(() => designLook(design), [design])
   const strokeCount = design.strokes?.length ?? 0
   const hasTwoSides = surface.kind === 'tote' || surface.kind === 'agenda' || surface.kind === 'sudadera'
   const estimate =

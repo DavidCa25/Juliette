@@ -407,14 +407,24 @@ function SurfaceBase({ s, showPedestal, id }: { s: Surface; showPedestal: boolea
 
 type LiveHandle = { set: (p: number[] | null) => void }
 
+/**
+ * Encuadre cercano para pintar: muestra solo el cuerpo de la pieza (sin el espacio vacío de alrededor),
+ * así se ve más grande. Conserva la proporción 600 × 740 para que el lienzo no cambie de tamaño.
+ */
+const PAINT_FRAME: Partial<Record<SurfaceKind, string>> = {
+  tote: '95 196 410 506',
+  cuadro: '76 82 448 552',
+  agenda: '80 136 443 546',
+}
+
 /** Capa ligera encima de la pieza que solo muestra el trazo mientras se pinta. */
-const LiveOverlay = forwardRef<LiveHandle, { draw: DrawTool; mirrorX: (x: number) => number; kind: SurfaceKind }>(function LiveOverlay({ draw, mirrorX, kind }, ref) {
+const LiveOverlay = forwardRef<LiveHandle, { draw: DrawTool; mirrorX: (x: number) => number; kind: SurfaceKind; viewBox: string }>(function LiveOverlay({ draw, mirrorX, kind, viewBox }, ref) {
   const [p, setP] = useState<number[] | null>(null)
   const clipId = useId().replace(/[^a-zA-Z0-9_-]/g, '')
   useImperativeHandle(ref, () => ({ set: setP }), [])
   if (!p) return null
   return (
-    <svg viewBox="0 0 600 740" className="absolute inset-0 w-full h-full pointer-events-none" aria-hidden="true">
+    <svg viewBox={viewBox} className="absolute inset-0 w-full h-full pointer-events-none" aria-hidden="true">
       <defs>
         <clipPath id={`lc-${clipId}`}>{bodyShape(kind)}</clipPath>
       </defs>
@@ -463,7 +473,7 @@ const MemoSurface = memo(SurfaceBase)
 
 /** Vista previa de la pieza: se actualiza en vivo con cada decisión. */
 /** layer="design": solo lo pintado (motivo, texto y trazos), recortado al frente de la tote y sin fondo; sirve como textura del modelo 3D. */
-export const ToteCanvas = forwardRef<SVGSVGElement, { design: Design; showPedestal?: boolean; draw?: DrawTool; layer?: 'design' }>(function ToteCanvas({ design, showPedestal = true, draw, layer }, ref) {
+export const ToteCanvas = forwardRef<SVGSVGElement, { design: Design; showPedestal?: boolean; draw?: DrawTool; layer?: 'design'; zoom?: boolean }>(function ToteCanvas({ design, showPedestal = true, draw, layer, zoom }, ref) {
   // Pintar a mano: los trazos se guardan en coordenadas de la vista previa
   const local = useRef<SVGSVGElement | null>(null)
   const setRefs = useCallback(
@@ -634,12 +644,13 @@ export const ToteCanvas = forwardRef<SVGSVGElement, { design: Design; showPedest
   const showBack = design.back && surface.kind !== 'cuadro'
   const isDenim = surface.id === 'tote-mezclilla'
   const cx = surface.kind === 'agenda' ? 312 : 300
+  const viewBox = layer ? DESIGN_BOX.join(' ') : (zoom && PAINT_FRAME[surface.kind]) || '0 0 600 740'
 
   return (
     <div className="relative">
     <svg
       ref={setRefs}
-      viewBox={layer ? DESIGN_BOX.join(' ') : '0 0 600 740'}
+      viewBox={viewBox}
       role="img"
       aria-label={label}
       className="w-full h-auto block"
@@ -792,7 +803,7 @@ export const ToteCanvas = forwardRef<SVGSVGElement, { design: Design; showPedest
         </g>
       )}
     </svg>
-      {draw && <LiveOverlay ref={overlay} draw={draw} mirrorX={mirrorX} kind={surface.kind} />}
+      {draw && <LiveOverlay ref={overlay} draw={draw} mirrorX={mirrorX} kind={surface.kind} viewBox={viewBox} />}
     </div>
   )
 })
@@ -820,14 +831,29 @@ function embeddedFonts() {
         return b.replace(url, `data:font/woff2;base64,${btoa(bin)}`)
       }),
     )
-    return out.join('\n')
+    // Un bloque @font-face por línea, para poder elegir después solo las familias necesarias
+    return out.map((b) => b.replace(/\s*\n\s*/g, ' ').trim()).join('\n')
   })().catch(() => '')
   return fontCss
 }
 
 /** Serializa un SVG con las fuentes incrustadas, listo para dibujarlo como imagen. */
 export async function serializeWithFonts(svg: SVGSVGElement) {
-  const css = await embeddedFonts()
+  // Solo se incrustan las familias que el dibujo usa de verdad (sin texto, no se incrusta nada):
+  // así la imagen pesa decenas de KB en lugar de cientos y se prepara mucho más rápido
+  const used = new Set<string>()
+  svg.querySelectorAll('text, tspan').forEach((t) => {
+    const f = `${t.getAttribute('font-family') ?? ''} ${(t as SVGElement).style.fontFamily}`
+    if (/cormorant/i.test(f)) used.add('Cormorant')
+    if (/montserrat/i.test(f)) used.add('Montserrat')
+    if (/pinyon/i.test(f)) used.add('Pinyon')
+  })
+  const css = used.size
+    ? (await embeddedFonts())
+        .split('\n')
+        .filter((b) => [...used].some((u) => b.includes(`font-family: '${u}`)))
+        .join('\n')
+    : ''
   if (css) {
     const style = document.createElementNS('http://www.w3.org/2000/svg', 'style')
     style.textContent = css

@@ -93,13 +93,16 @@ export default function Tote3D({ kind, surface, getDesignSvg, version, paint }: 
     if (!el) return
     let disposed = false
     let renderer: THREE.WebGLRenderer
+    // En pantallas de alta densidad el suavizado de bordes casi no se nota y cuesta mucho a la gráfica
+    const dpr = window.devicePixelRatio || 1
     try {
-      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true })
+      renderer = new THREE.WebGLRenderer({ antialias: dpr < 1.5, alpha: true, powerPreference: 'high-performance' })
     } catch {
       setStatus('error')
       return
     }
-    renderer.setPixelRatio(Math.min(1.75, window.devicePixelRatio || 1))
+    let ratio = Math.min(1.5, dpr)
+    renderer.setPixelRatio(ratio)
     renderer.outputColorSpace = THREE.SRGBColorSpace
     renderer.toneMapping = THREE.ACESFilmicToneMapping
     renderer.toneMappingExposure = 1.05
@@ -122,9 +125,17 @@ export default function Tote3D({ kind, surface, getDesignSvg, version, paint }: 
     controls.dampingFactor = 0.08
     controls.minPolarAngle = Math.PI / 2 - 0.45
     controls.maxPolarAngle = Math.PI / 2 + 0.25
-    controls.autoRotate = !paintRef.current
-    controls.autoRotateSpeed = 1.2
+    // Al abrir da una vuelta corta para mostrar que se puede girar, y luego se queda quieta (sin gastar gráfica)
+    controls.autoRotate = !paintRef.current && !window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    controls.autoRotateSpeed = 2.4
+    let spinUntil = 0
     controls.addEventListener('start', () => (controls.autoRotate = false))
+    if (paintRef.current) {
+      // Al pintar: giro más suave y sin poder voltearla de espaldas, para que el frente siempre quede a la vista
+      controls.rotateSpeed = 0.55
+      controls.minAzimuthAngle = -1.05
+      controls.maxAzimuthAngle = 1.05
+    }
 
     // ---- Dibujo bajo demanda: solo cuando hay cambios y la vista está en pantalla ----
     let dirty = true
@@ -132,9 +143,30 @@ export default function Tote3D({ kind, surface, getDesignSvg, version, paint }: 
     let raf = 0
     let liveTexture: THREE.CanvasTexture | null = null
     let texDirty = false
-    const frame = () => {
+    // Calidad adaptable: si los cuadros tardan demasiado, se baja la resolución interna
+    let last = 0
+    let slow = 0
+    let samples = 0
+    const frame = (now: number) => {
       raf = 0
-      if (disposed || !visible || document.hidden) return
+      if (disposed || !visible || document.hidden) {
+        last = 0
+        return
+      }
+      if (controls.autoRotate && spinUntil && now > spinUntil) controls.autoRotate = false
+      if (last) {
+        samples++
+        if (now - last > 28) slow++
+        if (samples >= 30) {
+          if (slow > 12 && ratio > 1) {
+            ratio = 1
+            renderer.setPixelRatio(1)
+            resize()
+          } else if (slow > 12) controls.autoRotate = false
+          samples = 0
+          slow = 0
+        }
+      }
       const moved = controls.update()
       if (texDirty && liveTexture) {
         // La textura se sube a la gráfica como mucho una vez por cuadro, aunque haya varios movimientos
@@ -147,7 +179,10 @@ export default function Tote3D({ kind, surface, getDesignSvg, version, paint }: 
         dirty = false
       }
       // Sigue animando solo mientras gira sola o la inercia del arrastre se está deteniendo
-      if (moved || controls.autoRotate) raf = requestAnimationFrame(frame)
+      if (moved || controls.autoRotate) {
+        last = now
+        raf = requestAnimationFrame(frame)
+      } else last = 0
     }
     const invalidate = () => {
       dirty = true
@@ -235,7 +270,7 @@ export default function Tote3D({ kind, surface, getDesignSvg, version, paint }: 
           invalidate()
         }
         texture.colorSpace = THREE.SRGBColorSpace
-        texture.anisotropy = renderer.capabilities.getMaxAnisotropy()
+        texture.anisotropy = Math.min(4, renderer.capabilities.getMaxAnisotropy())
         const decalMat = new THREE.MeshStandardMaterial({ map: texture, transparent: true, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -4, roughness: 0.95, metalness: 0 })
         const decalGeo = new DecalGeometry(m, decalCenter, new THREE.Euler(0, 0, 0), new THREE.Vector3(decalW, decalH, size.z * 1.2))
         const decal = new THREE.Mesh(decalGeo, decalMat)
@@ -275,14 +310,18 @@ export default function Tote3D({ kind, surface, getDesignSvg, version, paint }: 
           if (u < -0.02 || u > 1.02 || vv < -0.02 || vv > 1.02) return null
           return [Math.round((BX + Math.min(1, Math.max(0, u)) * BW) * 10) / 10, Math.round((BY + Math.min(1, Math.max(0, vv)) * BH) * 10) / 10]
         }
-        /** Al empezar: se revisa contra el modelo real (para saber si se tocó el frente y no la espalda). */
-        const toDesign = (e: PointerEvent): [number, number] | null => {
+        /**
+         * Al empezar se revisa contra el modelo real. `onPiece` dice si se tocó la tela (entonces nunca gira);
+         * `point` solo existe si se tocó el frente dentro del área que se puede pintar.
+         */
+        const toDesign = (e: PointerEvent): { onPiece: boolean; point: [number, number] | null } => {
           setRay(e)
           const hit = raycaster.intersectObject(m, false)[0]
-          if (!hit || !hit.face) return null
+          if (!hit || !hit.face) return { onPiece: false, point: null }
           const n = hit.face.normal.clone().transformDirection(m.matrixWorld)
-          if (n.z < 0.15) return null
-          return mapPoint(hit.point)
+          // Del frente: la cara mira hacia +z (con margen para pliegues y vistas de lado)
+          if (n.z < -0.05) return { onPiece: true, point: null }
+          return { onPiece: true, point: mapPoint(hit.point) ?? (raycaster.ray.intersectPlane(frontPlane, planeHit) ? mapPoint(planeHit) : null) }
         }
         /** Mientras se arrastra: basta el plano del frente, mucho más rápido que revisar los 40 mil triángulos. */
         const toDesignFast = (e: PointerEvent): [number, number] | null => {
@@ -323,10 +362,12 @@ export default function Tote3D({ kind, surface, getDesignSvg, version, paint }: 
         const onDown = (e: PointerEvent) => {
           const t = paintRef.current
           if (!t) return
-          const p = toDesign(e)
-          if (!p) return // fuera del frente: se usa para girar la pieza
+          const { onPiece, point: p } = toDesign(e)
+          // Solo el fondo gira la pieza; tocar la tela nunca la gira aunque sea fuera del área del diseño
+          if (!onPiece) return
           e.preventDefault()
           e.stopImmediatePropagation()
+          if (!p) return
           controls.enabled = false
           if (t.mode === 'sticker') {
             const st: Stroke = { t: 'stamp', c: t.color, k: t.sticker, x: p[0], y: p[1], s: t.stickerSize / 12, r: t.rotation }
@@ -387,6 +428,7 @@ export default function Tote3D({ kind, surface, getDesignSvg, version, paint }: 
         controls.minDistance = dist * 0.6
         controls.maxDistance = dist * 1.6
         controls.update()
+        spinUntil = performance.now() + 6000
         setStatus('listo')
         invalidate()
       })

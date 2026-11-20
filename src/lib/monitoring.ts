@@ -12,7 +12,8 @@ export const monitoringOn = !!dsn
 const EMAIL = /[^\s@]+@[^\s@]+\.[^\s@]+/g
 
 export function initMonitoring() {
-  if (!dsn) return
+  // En desarrollo (localhost) no se reporta nada, para que Sentry solo muestre errores de clientas reales
+  if (!dsn || (!import.meta.env.PROD && !import.meta.env.VITE_SENTRY_DEV)) return
   Sentry.init({
     dsn,
     environment: import.meta.env.VITE_SENTRY_ENV || import.meta.env.MODE,

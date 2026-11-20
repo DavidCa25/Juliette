@@ -146,3 +146,10 @@ export function describeDesign(d: Design) {
   if (d.reference) lines.push('Incluye imagen de referencia (la envío en el chat)')
   return lines.filter(Boolean)
 }
+
+/**
+ * Lo que cambia el dibujo de la pieza (sin notas, fecha, talla ni ocasión). La vista 3D solo vuelve a
+ * estampar el diseño cuando esto cambia, así escribir en otros campos no la vuelve lenta.
+ */
+export const designLook = (d: Design) =>
+  JSON.stringify([d.surface, d.motif, d.palette, d.text, d.font, d.placement, d.size, d.back, d.reference ? `${d.reference.length}:${d.reference.slice(-48)}` : '', d.strokes])

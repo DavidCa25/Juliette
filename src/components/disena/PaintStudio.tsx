@@ -1,7 +1,7 @@
 import { Suspense, lazy, useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { Aviso } from '../Aviso'
-import { MAX_POINTS, type BrushId, type Design, type Stroke } from '../../data/design'
+import { MAX_POINTS, designLook, type BrushId, type Design, type Stroke } from '../../data/design'
 import { ToteCanvas, type DrawTool } from './ToteCanvas'
 import { PaintDefs, StickerArt, StrokesLayer, brushes, stickers, swatches } from './paint'
 import { normalize, useStickerCategory, useStickerIndex } from './stickerLibrary'
@@ -82,7 +82,7 @@ export function PaintStudio({ open, onClose, design, setDesign, palette, surface
   const in3d = view === '3d' && can3d
   const layerRef = useRef<SVGSVGElement>(null)
   const getLayer = useCallback(() => layerRef.current, [])
-  const version = useMemo(() => JSON.stringify(design), [design])
+  const version = useMemo(() => designLook(design), [design])
   const [tab, setTab] = useState<'pincel' | 'sticker'>('pincel')
   const [tools, setTools] = useState<Tools>({ mode: 'pincel', brush: 'pincel', color: '', size: 12, opacity: 1, sticker: 'estrella', stickerSize: 34, rotation: 0, mirror: false })
   const [redo, setRedo] = useState<Stroke[][]>([])
@@ -295,7 +295,7 @@ export function PaintStudio({ open, onClose, design, setDesign, palette, surface
                 <Tote3D kind={kind} surface={design.surface} getDesignSvg={getLayer} version={version} paint={full ? undefined : draw} />
               </Suspense>
             ) : (
-              <ToteCanvas design={design} draw={full ? undefined : draw} showPedestal={false} />
+              <ToteCanvas design={design} draw={full ? undefined : draw} showPedestal={false} zoom />
             )}
           </div>
           {in3d && (
