@@ -60,6 +60,8 @@ export type Design = {
   reference: string | null
   /** Lo que el cliente pintó a mano sobre la pieza */
   strokes: Stroke[]
+  /** Trazos guardados de otros motivos o piezas, para recuperarlos al regresar a ellos */
+  strokesBy?: Record<string, Stroke[]>
 }
 
 export const defaultDesign: Design = {
@@ -153,3 +155,29 @@ export function describeDesign(d: Design) {
  */
 export const designLook = (d: Design) =>
   JSON.stringify([d.surface, d.motif, d.palette, d.text, d.font, d.placement, d.size, d.back, d.reference ? `${d.reference.length}:${d.reference.slice(-48)}` : '', d.strokes])
+
+/** Los trazos pertenecen a un motivo en un tipo de pieza (pintar en "Dibújala tú" no se encima en "Celestial"). */
+const strokeKey = (d: Design) => `${surfaces.find((x) => x.id === d.surface)?.kind ?? 'tote'}|${d.motif}`
+
+/**
+ * Al cambiar de motivo o de tipo de pieza, los trazos actuales se guardan aparte y se cargan los de
+ * la nueva combinación (vacíos si nunca se pintó ahí). Al regresar, aparecen otra vez.
+ */
+export function withStrokesFor(prev: Design, next: Design): Design {
+  const a = strokeKey(prev)
+  const b = strokeKey(next)
+  if (a === b) return next
+  const by = { ...(next.strokesBy ?? {}) }
+  if (next.strokes?.length) by[a] = next.strokes
+  else delete by[a]
+  const strokes = by[b] ?? []
+  delete by[b]
+  return { ...next, strokes, strokesBy: by }
+}
+
+/** El diseño sin los trazos guardados de otros motivos (para el carrito y los pedidos). */
+export const forOrder = (d: Design): Design => {
+  const { strokesBy: _drop, ...rest } = d
+  void _drop
+  return rest
+}

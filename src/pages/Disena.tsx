@@ -2,7 +2,7 @@ import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState, type
 import { createPortal } from 'react-dom'
 import { Link } from 'react-router-dom'
 import { customPricing, site } from '../config/site'
-import { defaultDesign, describeDesign, designLook, fitFor, fonts, motifs, occasions, palettes, placements, sizes, surfaces, type Design } from '../data/design'
+import { defaultDesign, describeDesign, designLook, fitFor, forOrder, withStrokesFor, fonts, motifs, occasions, palettes, placements, sizes, surfaces, type Design } from '../data/design'
 import { money, readJSON, writeJSON } from '../lib/format'
 import { openWhatsApp } from '../lib/whatsapp'
 import { track } from '../lib/analytics'
@@ -46,12 +46,14 @@ function Choice({ active, onClick, children, className = '', label }: { active: 
 
 export default function Disena() {
   usePageMeta('Diseña la tuya', 'Crea tu propia tote bag pintada a mano: elige motivo, paleta y palabras, y recibe un boceto antes de pintarla.')
-  const [design, setDesign] = useState<Design>(() => {
+  const [design, setDesignRaw] = useState<Design>(() => {
     const saved = { ...defaultDesign, ...readJSON<Partial<Design>>(KEY, {}) }
     // Diseños guardados con piezas que ya no existen (ej. la chamarra de mezclilla) pasan a la opción más cercana
     if (!surfaces.some((x) => x.id === saved.surface)) saved.surface = String(saved.surface).startsWith('chamarra') ? 'sudadera-beige' : defaultDesign.surface
     return saved
   })
+  // Todo cambio pasa por aquí: si cambia el motivo o el tipo de pieza, cada uno conserva sus propios trazos
+  const setDesign = useCallback((u: Design | ((d: Design) => Design)) => setDesignRaw((d) => withStrokesFor(d, typeof u === 'function' ? u(d) : u)), [])
   const [step, setStep] = useState(0)
   const [saved, setSaved] = useState(false)
   const [uploadError, setUploadError] = useState<null | { title: string; accent: string; body: string }>(null)
@@ -205,7 +207,7 @@ export default function Disena() {
     try {
       const thumb = await svgToPng(svgRef.current, 360)
       track('design_complete', { via: 'carrito', surface: design.surface, motif: design.motif, palette: design.palette })
-      add({ kind: 'custom', name: `${surface.name} a medida`, image: thumb, design: { ...design }, unitPrice: estimate, qty: 1 })
+      add({ kind: 'custom', name: `${surface.name} a medida`, image: thumb, design: forOrder(design), unitPrice: estimate, qty: 1 })
     } catch {
       setOops(true)
     } finally {
