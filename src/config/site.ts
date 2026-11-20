@@ -66,7 +66,8 @@ export const site = {
   /** Opcionales: endpoints para integrar servicios (Formspree, Make, Zapier, etc.) */
   endpoints: {
     order: import.meta.env.VITE_ORDER_WEBHOOK ?? '',
-    newsletter: import.meta.env.VITE_NEWSLETTER_ENDPOINT ?? '',
+    // Por defecto se usa el newsletter propio (Resend + Neon); se puede cambiar por otro servicio
+    newsletter: import.meta.env.VITE_NEWSLETTER_ENDPOINT || '/api/newsletter',
     paymentLink: import.meta.env.VITE_PAYMENT_LINK ?? '',
   },
   analytics: {

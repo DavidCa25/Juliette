@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { campaign, track, visitorId } from '../lib/analytics'
 import { Link, useNavigate } from 'react-router-dom'
 import { site } from '../config/site'
@@ -7,6 +7,7 @@ import { useCart, type CartLine } from '../state/cart'
 import { money, orderId, writeJSON } from '../lib/format'
 import { usePageMeta } from '../lib/usePageMeta'
 import { Arrow, btnPrimary, container } from '../components/ui'
+import { Aviso } from '../components/Aviso'
 
 type Form = {
   name: string
@@ -23,6 +24,17 @@ type Form = {
 }
 
 const empty: Form = { name: '', phone: '', email: '', delivery: 'envio', street: '', city: '', zip: '', references: '', payment: 'transferencia', gift: '', accept: false }
+
+/** Nombre corto de cada dato para la lista del aviso. */
+const fieldNames: Partial<Record<keyof Form, string>> = {
+  name: 'Nombre',
+  phone: 'WhatsApp',
+  email: 'Correo',
+  street: 'Calle y número',
+  city: 'Ciudad',
+  zip: 'Código postal',
+  accept: 'Términos y privacidad',
+}
 
 export type StoredOrder = { id: string; createdAt: string; message: string; total: string; customer: { name: string; email: string } }
 export const ORDER_KEY = 'jl-last-order'
@@ -64,6 +76,18 @@ export default function Checkout() {
   const [errors, setErrors] = useState<Partial<Record<keyof Form, string>>>({})
   const [sending, setSending] = useState(false)
   const [website, setWebsite] = useState('')
+  const [missing, setMissing] = useState<(keyof Form)[] | null>(null)
+  const [offline, setOffline] = useState(false)
+  const formRef = useRef<HTMLFormElement>(null)
+  const goTo = (k: keyof Form) => {
+    setMissing(null)
+    // Un momento después de cerrar el aviso, para que el foco no regrese al botón de enviar
+    window.setTimeout(() => {
+      const el = document.getElementById(`co-${k}`)
+      el?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+      el?.focus({ preventScroll: true })
+    }, 40)
+  }
   const set = <K extends keyof Form>(k: K, v: Form[K]) => {
     setF((x) => ({ ...x, [k]: v }))
     setErrors((e) => ({ ...e, [k]: undefined }))
@@ -86,23 +110,24 @@ export default function Checkout() {
   function validate() {
     const e: Partial<Record<keyof Form, string>> = {}
     if (f.name.trim().length < 2) e.name = 'Escribe tu nombre.'
-    if (f.phone.replace(/\D/g, '').length < 10) e.phone = 'Escribe un teléfono de al menos 10 dígitos.'
-    if (!/^\S+@\S+\.\S+$/.test(f.email)) e.email = 'Escribe un correo válido.'
+    if (f.phone.replace(/\D/g, '').length < 10) e.phone = 'Escribe 10 dígitos para coordinar la entrega.'
+    if (!/^\S+@\S+\.\S+$/.test(f.email)) e.email = 'Escribe un correo válido: ahí te llega la confirmación.'
     if (f.delivery === 'envio') {
-      if (f.street.trim().length < 4) e.street = 'Escribe la calle y número.'
-      if (f.city.trim().length < 2) e.city = 'Escribe la ciudad.'
-      if (!/^\d{4,6}$/.test(f.zip.trim())) e.zip = 'Escribe un código postal válido.'
+      if (f.street.trim().length < 4) e.street = 'Escribe calle y número, para saber a qué puerta tocar.'
+      if (f.city.trim().length < 2) e.city = 'Escribe tu ciudad.'
+      if (!/^\d{4,6}$/.test(f.zip.trim())) e.zip = 'Revisa tu código postal: son 5 dígitos.'
     }
-    if (!f.accept) e.accept = 'Necesitamos que aceptes los términos para continuar.'
+    if (!f.accept) e.accept = 'Acepta los términos para continuar.'
     setErrors(e)
-    const first = Object.keys(e)[0]
-    if (first) document.getElementById(`co-${first}`)?.focus()
-    return !first
+    const keys = Object.keys(e) as (keyof Form)[]
+    if (keys.length) setMissing(keys)
+    return !keys.length
   }
 
   async function onSubmit(ev: FormEvent) {
     ev.preventDefault()
     if (!validate()) return
+    if (!navigator.onLine) return setOffline(true)
     setSending(true)
     let id = orderId()
     // Registra el pedido en la base de datos (si está configurada). Si falla, el pedido sigue por WhatsApp.
@@ -209,7 +234,40 @@ export default function Checkout() {
         Confirma tu <span className="italic">pedido</span>
       </h1>
 
-      <form onSubmit={onSubmit} noValidate className="flex flex-wrap gap-[clamp(32px,6vw,96px)] items-start">
+      <form ref={formRef} onSubmit={onSubmit} noValidate className="flex flex-wrap gap-[clamp(32px,6vw,96px)] items-start">
+        <Aviso
+          open={!!missing}
+          onClose={() => missing && goTo(missing[0])}
+          eyebrow={missing?.length === 1 ? 'Falta 1 dato' : `Faltan ${missing?.length ?? 0} datos`}
+          title="Tu pieza ya"
+          accent="quiere viajar"
+          body="Solo nos falta saber cómo llegar a ti."
+          primary={{ label: missing?.length === 1 ? 'Completar dato' : 'Completar datos', onClick: () => missing && goTo(missing[0]) }}
+        >
+          <ul className="m-0 p-0 list-none border-b border-borgona/15">
+            {missing?.map((k) => (
+              <li key={k} className="border-t border-borgona/15">
+                <button type="button" onClick={() => goTo(k)} className="w-full min-h-[56px] py-2 flex items-center justify-between gap-4 bg-transparent border-0 text-borgona text-left cursor-pointer">
+                  <span className="flex flex-col gap-[2px]">
+                    <span className="text-[14px] font-semibold">{fieldNames[k] ?? k}</span>
+                    <span className="text-[12px] text-vino">{errors[k]}</span>
+                  </span>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" className="flex-none"><path d="M9 5l7 7-7 7" /></svg>
+                </button>
+              </li>
+            ))}
+          </ul>
+        </Aviso>
+        <Aviso
+          open={offline}
+          tone="vino"
+          onClose={() => setOffline(false)}
+          title="Se fue la señal,"
+          accent="no la inspiración"
+          body="Tu pedido y tu diseño siguen guardados en este dispositivo. Revisa tu conexión e inténtalo de nuevo."
+          primary={{ label: 'Intentar de nuevo', onClick: () => { setOffline(false); formRef.current?.requestSubmit() } }}
+          secondary={{ label: 'Ahora no', onClick: () => setOffline(false) }}
+        />
         <div aria-hidden="true" className="absolute -left-[9999px] w-px h-px overflow-hidden">
           <label htmlFor="co-website">Deja este campo vacío</label>
           <input id="co-website" tabIndex={-1} autoComplete="off" value={website} onChange={(e) => setWebsite(e.target.value)} />

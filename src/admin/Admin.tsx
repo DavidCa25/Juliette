@@ -6,9 +6,10 @@ import { api, authClient, slugify, type AdminContent, type AdminProduct, type Me
 import { ProductEditor } from './ProductEditor'
 import { SettingsEditor } from './SettingsEditor'
 import { Stats } from './Stats'
+import { Newsletter } from './Newsletter'
 import { Orders } from './Orders'
 
-type Tab = 'resumen' | 'pedidos' | 'productos' | 'ajustes'
+type Tab = 'resumen' | 'pedidos' | 'boletin' | 'productos' | 'ajustes'
 const DRAFT_KEY = 'jl-admin-draft-v1'
 const categoryLabel: Record<string, string> = { tote: 'Tote bag', prenda: 'Prenda', cuadro: 'Cuadro', agenda: 'Agenda', accesorio: 'Accesorio', hogar: 'Hogar', otro: 'Otra' }
 const statusLabel: Record<string, string> = { disponible: 'Disponible', 'bajo-pedido': 'Bajo pedido', agotado: 'Agotado' }
@@ -246,9 +247,9 @@ function Dashboard({ me }: { me: Extract<Me, { signedIn: true }> }) {
           </div>
 
           <div role="tablist" aria-label="Secciones" className="flex gap-1 border-b border-borgona/25 overflow-x-auto overflow-y-hidden">
-            {(['resumen', 'pedidos', 'productos', 'ajustes'] as const).map((t) => (
+            {(['resumen', 'pedidos', 'boletin', 'productos', 'ajustes'] as const).map((t) => (
               <button key={t} role="tab" type="button" aria-selected={tab === t} onClick={() => setTab(t)} className={`min-h-[48px] px-4 sm:px-5 bg-transparent border-0 border-b-2 text-borgona text-[14px] sm:text-[15px] font-semibold cursor-pointer -mb-px whitespace-nowrap ${tab === t ? 'border-borgona' : 'border-transparent opacity-60'}`}>
-                {t === 'resumen' ? 'Resumen' : t === 'pedidos' ? 'Pedidos' : t === 'productos' ? `Productos (${draft.products.length})` : 'Ajustes'}
+                {t === 'resumen' ? 'Resumen' : t === 'pedidos' ? 'Pedidos' : t === 'boletin' ? 'Boletín' : t === 'productos' ? `Productos (${draft.products.length})` : 'Ajustes'}
               </button>
             ))}
           </div>
@@ -261,6 +262,8 @@ function Dashboard({ me }: { me: Extract<Me, { signedIn: true }> }) {
         <Stats productNames={Object.fromEntries(draft.products.map((p) => [p.slug, p.name]))} />
       ) : tab === 'pedidos' ? (
         <Orders />
+      ) : tab === 'boletin' ? (
+        <Newsletter />
       ) : tab === 'productos' ? (
         <ul className="m-0 p-0 list-none flex flex-col border-b border-borgona">
           {products.map((p) => (

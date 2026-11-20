@@ -73,7 +73,15 @@ async function json<T>(r: Response): Promise<T> {
   return data as T
 }
 
+export type Subscriber = { email: string; created_at: string; source: string | null; country: string | null; status: string }
+export type Broadcast = { template: 'lanzamiento' | 'promocion' | 'temporada'; subject: string; title: string; body: string; image?: string; ctaLabel?: string; ctaUrl?: string; note?: string }
+
 export const api = {
+  newsletter: () => fetch('/api/admin/newsletter', { credentials: 'include' }).then((r) => json<{ subscribers: Subscriber[]; total: number; ready: { key: boolean; segment: boolean } }>(r)),
+  newsletterAction: (action: 'preview' | 'test' | 'send', b: Broadcast) =>
+    fetch('/api/admin/newsletter', { method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ action, ...b }) }).then((r) =>
+      json<{ html?: string; ok?: boolean; to?: string[]; id?: string }>(r),
+    ),
   me: () => fetch('/api/admin/me', { credentials: 'include' }).then((r) => json<Me>(r)),
   content: () => fetch('/api/admin/content', { credentials: 'include' }).then((r) => json<AdminContent>(r)),
   publish: (c: AdminContent) =>

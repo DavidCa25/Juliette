@@ -42,3 +42,15 @@ CREATE TABLE IF NOT EXISTS events (
 );
 CREATE INDEX IF NOT EXISTS events_ts_idx ON events (ts DESC);
 CREATE INDEX IF NOT EXISTS events_type_ts_idx ON events (type, ts DESC);
+
+-- Suscriptores del newsletter (el envío se hace con Resend)
+CREATE TABLE IF NOT EXISTS subscribers (
+  email      text PRIMARY KEY,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  source     text,
+  country    text,
+  status     text NOT NULL DEFAULT 'activo',
+  consent_at timestamptz NOT NULL DEFAULT now(),
+  resend_id  text
+);
+CREATE INDEX IF NOT EXISTS subscribers_created_idx ON subscribers (created_at DESC);

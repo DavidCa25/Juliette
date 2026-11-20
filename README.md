@@ -78,6 +78,14 @@ La dueña entra con su **cuenta de Google** y puede agregar, editar o quitar pro
 2. En *Domains* agrega tu dominio y copia los registros DNS que te indica. Sin dominio verificado, Resend solo deja enviar al correo de tu propia cuenta, así que los clientes no recibirían nada.
 3. Crea una *API Key* y agrega en Vercel `RESEND_API_KEY`, `EMAIL_FROM` (p. ej. `Julietté <pedidos@tudominio.com>`) y, si quieres otro destinatario que `ADMIN_EMAILS`, `ORDER_NOTIFY_EMAIL`.
 
+**Newsletter (boletines)**
+- El formulario del pie de página guarda cada correo en Neon (con fecha de consentimiento), lo agrega a los contactos de Resend y le manda un correo de bienvenida.
+- En **/admin › Boletín** la dueña ve sus suscriptores, los descarga en Excel (CSV) y arma boletines con 3 plantillas (lanzamiento, promoción, aviso de temporada): asunto, título, texto, imagen y botón, con vista previa. Puede enviarse una prueba y luego enviarlo a todos.
+- Cada boletín incluye el enlace de baja de Resend.
+1. En Resend › **API Keys** crea una clave con permiso **Full access** y guárdala en Vercel como `RESEND_MARKETING_KEY` (Secret).
+2. En Resend › **Audience › Segments** crea un segmento (p. ej. "Suscriptores") y copia su id en `RESEND_SEGMENT_ID` (Config).
+3. Plan gratis de marketing: hasta 1,000 contactos.
+
 **Costos:** Neon (plan gratis), Cloudflare R2 (10 GB gratis al mes y sin cobro por transferencia), Better Auth y Google son gratuitos para este uso. Para un sitio comercial, Vercel pide el plan Pro.
 
 **Probar el panel en tu computadora:** el panel usa funciones del servidor, así que no corre con `npm run dev`. Usa `npx vercel dev` con un archivo `.env.local` que tenga las mismas variables (en Google agrega también `http://localhost:3000/api/auth/callback/google` y pon `BETTER_AUTH_URL=http://localhost:3000`).

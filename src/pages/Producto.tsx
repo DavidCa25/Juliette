@@ -9,6 +9,7 @@ import { usePageMeta } from '../lib/usePageMeta'
 import { useCart } from '../state/cart'
 import { Arrow, AutoVideo, Dot, Star, btnPrimary, container } from '../components/ui'
 import NotFound from './NotFound'
+import { Aviso, AvisoOpciones, fitCopy } from '../components/Aviso'
 
 const icons = [
   { label: 'Etiqueta Julietté', d: <><path d="M3 12l9-9h7v7l-9 9z" /><circle cx="15.5" cy="8.5" r="1.4" /></> },
@@ -28,6 +29,7 @@ export default function Producto() {
   const [ideaError, setIdeaError] = useState(false)
   const [size, setSize] = useState('')
   const [sizeError, setSizeError] = useState(false)
+  const [sizeAsk, setSizeAsk] = useState(false)
 
   usePageMeta(product?.name ?? 'Pieza no encontrada', product?.description)
   useEffect(() => {
@@ -50,10 +52,10 @@ export default function Producto() {
   const needsSize = product.sizes.length > 0
   const sizeText = needsSize && size ? `${product.sizeLabel} ${size}` : undefined
 
-  function addToCart() {
-    if (needsSize && !size) {
+  function addToCart(pick = size) {
+    if (needsSize && !pick) {
       setSizeError(true)
-      document.getElementById('jl-size')?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+      setSizeAsk(true)
       return
     }
     if (option.needsIdea && !idea.trim()) {
@@ -61,7 +63,7 @@ export default function Producto() {
       document.getElementById('jl-idea')?.focus()
       return
     }
-    add({ kind: 'product', slug: product!.slug, name: product!.name, image: firstImage, optionId: option.id, optionLabel: option.label, unitPrice, idea: option.needsIdea ? idea.trim() : undefined, size: sizeText, qty: 1 })
+    add({ kind: 'product', slug: product!.slug, name: product!.name, image: firstImage, optionId: option.id, optionLabel: option.label, unitPrice, idea: option.needsIdea ? idea.trim() : undefined, size: needsSize && pick ? `${product!.sizeLabel} ${pick}` : undefined, qty: 1 })
   }
 
   function askWhatsApp() {
@@ -204,8 +206,33 @@ export default function Producto() {
               </div>
             )}
 
+            {needsSize && (() => {
+              const c = fitCopy(product.sizeLabel)
+              const l = product.sizeLabel.toLowerCase()
+              return (
+                <Aviso
+                  open={sizeAsk}
+                  onClose={() => setSizeAsk(false)}
+                  eyebrow="Un detalle antes de pintar"
+                  title={c.title}
+                  accent={c.accent}
+                  body={c.body}
+                  primary={{
+                    label: size ? `Agregar en ${l === 'talla' ? 'talla ' : ''}${size}` : `Elige ${l === 'talla' ? 'una talla' : l === 'tamaño' ? 'un tamaño' : `una ${l}`}`,
+                    disabled: !size,
+                    onClick: () => {
+                      setSizeAsk(false)
+                      addToCart(size)
+                    },
+                  }}
+                  secondary={{ label: 'Ahora no', onClick: () => setSizeAsk(false) }}
+                >
+                  <AvisoOpciones options={product.sizes} value={size} onPick={(x) => { setSize(x); setSizeError(false) }} />
+                </Aviso>
+              )
+            })()}
             <div className="flex flex-col gap-4">
-              <button type="button" onClick={addToCart} disabled={product.status === 'agotado'} className={`${btnPrimary} w-full min-h-[60px]`}>
+              <button type="button" onClick={() => addToCart()} disabled={product.status === 'agotado'} className={`${btnPrimary} w-full min-h-[60px]`}>
                 Agregar al carrito <Arrow />
               </button>
               <button type="button" onClick={askWhatsApp} className="jl-link self-center bg-transparent border-0 p-0 text-borgona text-[14px] font-semibold cursor-pointer">

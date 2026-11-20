@@ -6,7 +6,9 @@
   "cleanUrls": true,
   "functions": {
     "api/orders.ts": { "includeFiles": "content/**" },
-    "api/admin/orders.ts": { "includeFiles": "content/**" }
+    "api/admin/orders.ts": { "includeFiles": "content/**" },
+    "api/newsletter.ts": { "includeFiles": "content/**" },
+    "api/admin/newsletter.ts": { "includeFiles": "content/**" }
   },
   "redirects": [{ "source": "/disena", "destination": "/design", "permanent": true }],
   "rewrites": [

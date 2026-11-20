@@ -4,6 +4,9 @@ const D = ["M68.1 202.13C50.21 205.98001 35.64 204.83 24.539998 198.68001 5.5 18
 
 export const ISOTIPO_VIEWBOX = "383 513 531 702"
 
+/** Trazos del isotipo, para piezas que usan solo una parte (como las cerezas). */
+export const isotipoPaths = D
+
 export function IsotipoPaths({ color = "#82001a" }: { color?: string }) {
   return (
     <g transform="matrix(1.1779609,0,0,1.1779609,386.134,517.32339)" fill={color}>

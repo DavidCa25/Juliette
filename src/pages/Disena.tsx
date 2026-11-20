@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { Link } from 'react-router-dom'
 import { customPricing, site } from '../config/site'
@@ -10,7 +10,14 @@ import { usePageMeta } from '../lib/usePageMeta'
 import { useCart } from '../state/cart'
 import { MotifArt, ToteCanvas, shrinkImage, svgToPng } from '../components/disena/ToteCanvas'
 import { PaintStudio } from '../components/disena/PaintStudio'
+
+// La vista 3D (three.js + modelo) solo se descarga si el cliente la abre
+const Tote3D = lazy(() => import('../components/disena/Tote3D'))
+const preload3D = () => {
+  import('../components/disena/Tote3D').then((m) => m.preload('tote')).catch(() => undefined)
+}
 import { Arrow, Star, btnPrimary, container } from '../components/ui'
+import { Aviso, AvisoOpciones, agendaNotes, fitCopy } from '../components/Aviso'
 
 const KEY = 'jl-design-v1'
 const steps = [
@@ -47,11 +54,21 @@ export default function Disena() {
   })
   const [step, setStep] = useState(0)
   const [saved, setSaved] = useState(false)
-  const [uploadError, setUploadError] = useState('')
+  const [uploadError, setUploadError] = useState<null | { title: string; accent: string; body: string }>(null)
+  // Avisos: qué falta y a dónde seguir cuando se resuelva
+  type After = number | 'cart' | 'whatsapp'
+  const [fitAsk, setFitAsk] = useState<After | null>(null)
+  const [refAsk, setRefAsk] = useState<number | null>(null)
+  const [refSkip, setRefSkip] = useState(false)
+  const [resume, setResume] = useState<After | null>(null)
+  const [oops, setOops] = useState(false)
   const [fitError, setFitError] = useState(false)
   const [garmentOpen, setGarmentOpen] = useState(false)
   // Estudio de pintura a mano (ventana a pantalla completa)
   const [studioOpen, setStudioOpen] = useState(false)
+  const [view3d, setView3d] = useState(false)
+  const designRef = useRef<SVGSVGElement>(null)
+  const getDesignSvg = useCallback(() => designRef.current, [])
   const [busy, setBusy] = useState(false)
   const svgRef = useRef<SVGSVGElement>(null)
   const headRef = useRef<HTMLHeadingElement>(null)
@@ -92,8 +109,12 @@ export default function Disena() {
     // La talla, medida o tamaño se elige antes de seguir
     if (next > 0 && missingFit) {
       setFitError(true)
-      if (step !== 0) setStep(0)
-      window.requestAnimationFrame(() => document.getElementById('jl-fit')?.scrollIntoView({ block: 'center', behavior: 'smooth' }))
+      setFitAsk(next)
+      return
+    }
+    // "Mi idea" necesita una imagen de referencia (o que la clienta elija que la sorprendan)
+    if (steps[step].id === 'inspiracion' && next > step && design.motif === 'mi-idea' && !design.reference && !refSkip) {
+      setRefAsk(next)
       return
     }
     if (next !== step) track('design_step', { step: steps[next].id, surface: design.surface })
@@ -104,23 +125,40 @@ export default function Disena() {
   const palette = palettes.find((p) => p.id === design.palette)!.colors
   const surface = surfaces.find((x) => x.id === design.surface) ?? surfaces[0]
   const garment = surface.kind === 'sudadera'
+  const show3d = view3d && surface.kind === 'tote'
+  const designVersion = useMemo(() => JSON.stringify(design), [design])
   const strokeCount = design.strokes?.length ?? 0
   const hasTwoSides = surface.kind === 'tote' || surface.kind === 'agenda' || surface.kind === 'sudadera'
   const estimate =
     customPricing.base === null ? null : customPricing.base + (design.text.trim() && customPricing.text ? customPricing.text : 0) + (design.back && customPricing.back ? customPricing.back : 0)
 
   async function onUpload(f?: File) {
-    setUploadError('')
+    setUploadError(null)
     if (!f) return
-    if (!f.type.startsWith('image/')) return setUploadError('Sube una imagen (JPG, PNG o WEBP).')
-    if (f.size > 12 * 1024 * 1024) return setUploadError('La imagen pesa más de 12 MB. Prueba con una más ligera.')
+    if (!f.type.startsWith('image/')) return setUploadError({ title: 'Ese archivo', accent: 'no es una foto', body: 'Sube una imagen JPG, PNG o WEBP: una foto, una captura o un dibujo escaneado.' })
+    if (f.size > 12 * 1024 * 1024) return setUploadError({ title: 'Esta foto', accent: 'viene muy cargada', body: 'Pesa más de 12 MB. Prueba con una captura de pantalla o una versión más ligera.' })
     try {
       const data = await shrinkImage(f)
       setDesign((d) => ({ ...d, reference: data, motif: d.motif === 'solo-texto' ? 'mi-idea' : d.motif }))
-    } catch (e) {
-      setUploadError((e as Error).message)
+      if (refAsk !== null) {
+        setResume(refAsk)
+        setRefAsk(null)
+      }
+    } catch {
+      setUploadError({ title: 'No pudimos', accent: 'leer esta foto', body: 'Prueba con otra imagen o con una captura de pantalla de la misma.' })
     }
   }
+
+  // Cuando un aviso se resuelve, se sigue a donde iba la clienta
+  useEffect(() => {
+    if (resume === null || missingFit) return
+    const r = resume
+    setResume(null)
+    if (r === 'cart') addToCart()
+    else if (r === 'whatsapp') sendWhatsApp()
+    else go(r)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resume, missingFit])
 
   const referenceUpload = (
     <div className="flex flex-col gap-3">
@@ -136,13 +174,12 @@ export default function Disena() {
           <span className="text-[13px]">Se envía con tu pedido para que Julietté la vea antes de bocetar.</span>
         </span>
       </label>
-      <input id="jl-ref" type="file" accept="image/*" className="sr-only" onChange={(e) => onUpload(e.target.files?.[0])} />
+      <input id="jl-ref" type="file" accept="image/*" className="sr-only" onChange={(e) => { onUpload(e.target.files?.[0]); e.target.value = '' }} />
       {design.reference && (
         <button type="button" onClick={() => set('reference', null)} className="jl-link self-start bg-transparent border-0 p-0 text-borgona text-[13px] font-semibold cursor-pointer">
           Quitar imagen
         </button>
       )}
-      {uploadError && <p role="alert" className="m-0 text-[13px] font-semibold">{uploadError}</p>}
     </div>
   )
 
@@ -161,20 +198,22 @@ export default function Disena() {
   }
 
   async function addToCart() {
-    if (missingFit) return go(1)
+    if (missingFit) return setFitAsk('cart')
     if (!svgRef.current) return
     setBusy(true)
     try {
       const thumb = await svgToPng(svgRef.current, 360)
       track('design_complete', { via: 'carrito', surface: design.surface, motif: design.motif, palette: design.palette })
       add({ kind: 'custom', name: `${surface.name} a medida`, image: thumb, design: { ...design }, unitPrice: estimate, qty: 1 })
+    } catch {
+      setOops(true)
     } finally {
       setBusy(false)
     }
   }
 
   function sendWhatsApp() {
-    if (missingFit) return go(1)
+    if (missingFit) return setFitAsk('whatsapp')
     track('design_complete', { via: 'whatsapp', surface: design.surface, motif: design.motif, palette: design.palette })
     openWhatsApp(['Hola, Julietté. Creé este diseño en su sitio y me gustaría un boceto:', '', ...describeDesign(design).map((l) => `• ${l}`)].join('\n'))
   }
@@ -205,9 +244,46 @@ export default function Disena() {
             <Star size={22} color="#fad9cd" className="jl-star absolute left-[8%] top-[9%]" />
             <Star size={14} color="#fdf6ee" className="jl-star absolute right-[10%] top-[20%]" delay="1.3s" />
             <Star size={18} color="#fad9cd" className="jl-star absolute right-[14%] bottom-[16%]" delay="2.2s" />
-            <div className={`relative max-w-[520px] mx-auto`}>
-              <ToteCanvas ref={svgRef} design={design} />
+            {surface.kind === 'tote' && (
+              <div className="absolute top-[4%] right-[5%] z-10 flex p-1 rounded-full bg-[#2a0a10]/40 backdrop-blur-sm" role="group" aria-label="Tipo de vista">
+                {[
+                  { v: false, l: 'Plano' },
+                  { v: true, l: '3D' },
+                ].map((o) => (
+                  <button
+                    key={o.l}
+                    type="button"
+                    aria-pressed={view3d === o.v}
+                    // Al acercarse al botón "3D" se empieza a descargar el modelo para que abra casi al instante
+                    onPointerEnter={o.v ? preload3D : undefined}
+                    onFocus={o.v ? preload3D : undefined}
+                    onTouchStart={o.v ? preload3D : undefined}
+                    onClick={() => {
+                      setView3d(o.v)
+                      if (o.v) track('design_step', { step: 'vista-3d', surface: design.surface })
+                    }}
+                    className={`h-9 px-4 rounded-full border-0 text-[12px] font-semibold tracking-[1px] cursor-pointer transition-colors ${view3d === o.v ? 'bg-crema text-borgona' : 'bg-transparent text-crema'}`}
+                  >
+                    {o.l}
+                  </button>
+                ))}
+              </div>
+            )}
+            <div className="relative max-w-[520px] mx-auto">
+              <div className={show3d ? 'invisible' : undefined}>
+                <ToteCanvas ref={svgRef} design={design} />
+              </div>
+              {show3d && (
+                <Suspense fallback={<p className="absolute inset-0 m-0 flex items-center justify-center text-crema text-[13px] tracking-[2px] uppercase font-semibold">Cargando 3D…</p>}>
+                  <Tote3D kind={surface.kind} getDesignSvg={getDesignSvg} version={designVersion} surface={design.surface} />
+                </Suspense>
+              )}
             </div>
+            {show3d && (
+              <div className="hidden" aria-hidden="true">
+                <ToteCanvas ref={designRef} design={design} layer="design" />
+              </div>
+            )}
             <div className={`flex items-center justify-between gap-3 pt-3 text-crema text-[12px] tracking-[2px] uppercase font-semibold`}>
               <span>Vista previa · ilustrativa</span>
               <span aria-live="polite" className={`transition-opacity duration-500 ${saved ? 'opacity-100' : 'opacity-0'}`}>Guardado</span>
@@ -283,7 +359,67 @@ export default function Disena() {
                 </button>
               </p>
             )}
-            <PaintStudio open={studioOpen} onClose={() => setStudioOpen(false)} design={design} setDesign={setDesign} palette={surface.dark ? ['#fdf6ee', ...palette] : palette} surfaceName={surface.name} fabric={surface.fabric} />
+            {fit && (() => {
+              const c = fitCopy(fit.label, surface.kind)
+              const short = design.fit.split(' · ')[0]
+              const label = missingFit
+                ? `Elige ${fit.label === 'Talla' ? 'una talla' : fit.label === 'Medida' ? 'una medida' : 'un tamaño'}`
+                : design.fit === 'Llevo mi propia prenda'
+                  ? 'Continuar con mi prenda'
+                  : fitAsk === 'cart'
+                    ? `Agregar en ${fit.label === 'Talla' ? 'talla ' : ''}${short}`
+                    : `Continuar con ${fit.label === 'Talla' ? 'talla ' : ''}${short}`
+              return (
+                <Aviso
+                  open={fitAsk !== null}
+                  onClose={() => setFitAsk(null)}
+                  eyebrow="Un detalle antes de pintar"
+                  title={c.title}
+                  accent={c.accent}
+                  body={c.body}
+                  primary={{ label, disabled: missingFit, onClick: () => { setResume(fitAsk); setFitAsk(null); setFitError(false) } }}
+                  secondary={{ label: 'Ahora no', onClick: () => setFitAsk(null) }}
+                >
+                  <AvisoOpciones options={fit.options} value={design.fit} onPick={(o) => set('fit', o)} notes={surface.kind === 'agenda' ? agendaNotes : undefined} />
+                </Aviso>
+              )
+            })()}
+            <Aviso
+              open={refAsk !== null}
+              onClose={() => setRefAsk(null)}
+              eyebrow="Falta un detalle"
+              title="Nos falta"
+              accent="tu musa"
+              body="Una foto de tu mascota, tu lugar favorito o esa idea que no sale de tu cabeza. Con ella la pintamos tal como la imaginas."
+              secondary={{ label: 'Prefiero que me sorprendan', onClick: () => { setRefSkip(true); setResume(refAsk); setRefAsk(null) } }}
+            >
+              <label htmlFor="jl-ref-aviso" className="flex flex-col items-center justify-center gap-2 min-h-[150px] rounded-[20px] border-[1.5px] border-dashed border-borgona/45 bg-white/70 cursor-pointer text-[14px] font-semibold hover:bg-rosa/40 transition-colors focus-within:outline-2 focus-within:outline-borgona">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3" /><circle cx="9" cy="10" r="1.8" /><path d="M21 16l-5-5-9 9" /></svg>
+                Subir foto
+                <span className="text-[12px] font-normal text-vino">JPG, PNG o WEBP, hasta 12 MB</span>
+                <input id="jl-ref-aviso" type="file" accept="image/*" className="sr-only" onChange={(e) => { onUpload(e.target.files?.[0]); e.target.value = '' }} />
+              </label>
+            </Aviso>
+            <Aviso
+              open={!!uploadError}
+              onClose={() => setUploadError(null)}
+              title={uploadError?.title ?? ''}
+              accent={uploadError?.accent}
+              body={uploadError?.body}
+              primary={{ label: 'Elegir otra foto', onClick: () => { setUploadError(null); document.getElementById(refAsk !== null ? 'jl-ref-aviso' : 'jl-ref')?.click() } }}
+              secondary={{ label: 'Ahora no', onClick: () => setUploadError(null) }}
+            />
+            <Aviso
+              open={oops}
+              tone="vino"
+              onClose={() => setOops(false)}
+              title="Se nos"
+              accent="corrió la pintura"
+              body="Algo falló al guardar tu diseño. No te preocupes: sigue a salvo en este dispositivo."
+              primary={{ label: 'Intentar de nuevo', onClick: () => { setOops(false); addToCart() } }}
+              secondary={{ label: 'Enviarlo por WhatsApp', onClick: () => { setOops(false); sendWhatsApp() } }}
+            />
+            <PaintStudio open={studioOpen} onClose={() => setStudioOpen(false)} design={design} setDesign={setDesign} palette={surface.dark ? ['#fdf6ee', ...palette] : palette} surfaceName={surface.name} fabric={surface.fabric} kind={surface.kind} />
             {garmentOpen && createPortal(
               <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-[#2a0a10]/55 jl-fade" onClick={() => setGarmentOpen(false)}>
                 <div

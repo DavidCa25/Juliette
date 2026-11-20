@@ -6,7 +6,8 @@ import { whatsappUrl } from '../../lib/whatsapp'
 
 function Newsletter() {
   const [email, setEmail] = useState('')
-  const [state, setState] = useState<'idle' | 'sending' | 'ok' | 'error'>('idle')
+  const [state, setState] = useState<'idle' | 'sending' | 'ok' | 'already' | 'error'>('idle')
+  const [website, setWebsite] = useState('')
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault()
@@ -22,8 +23,10 @@ function Newsletter() {
     }
     try {
       setState('sending')
-      const r = await fetch(site.endpoints.newsletter, { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify({ email }) })
-      setState(r.ok ? 'ok' : 'error')
+      const r = await fetch(site.endpoints.newsletter, { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json' }, body: JSON.stringify({ email, website, source: 'pie-de-pagina' }) })
+      const data = (await r.json().catch(() => ({}))) as { already?: boolean }
+      setState(r.ok ? (data.already ? 'already' : 'ok') : 'error')
+      if (r.ok) setEmail('')
     } catch {
       setState('error')
     }
@@ -53,8 +56,13 @@ function Newsletter() {
           </svg>
         </button>
       </div>
+      <input type="text" name="website" tabIndex={-1} autoComplete="off" value={website} onChange={(e) => setWebsite(e.target.value)} className="sr-only" aria-hidden="true" />
+      <p className="m-0 text-[11px] leading-[1.6] text-[#c99a9a]">
+        Al suscribirte aceptas recibir correos de Julietté y nuestro <Link to="/privacidad" className="underline underline-offset-2">aviso de privacidad</Link>. Puedes darte de baja cuando quieras.
+      </p>
       <p aria-live="polite" className="m-0 text-[13px] text-rosa min-h-[20px]">
-        {state === 'ok' && 'Gracias. Te avisaremos de cada lanzamiento.'}
+        {state === 'ok' && 'Gracias. Revisa tu correo: te mandamos la bienvenida.'}
+        {state === 'already' && 'Ya estás suscrita. Te avisaremos de cada lanzamiento.'}
         {state === 'error' && 'Revisa tu correo e inténtalo de nuevo.'}
       </p>
     </form>

@@ -38,9 +38,9 @@ const CREAM = '#fdf6ee'
 const ROSE = '#fad9cd'
 const SERIF = "Georgia,'Times New Roman',serif"
 
-const esc = (s: unknown) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
+export const esc = (s: unknown) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
 const money = (n: number | null) => (n === null ? 'Por confirmar' : new Intl.NumberFormat('es-MX', { style: 'currency', currency: 'MXN', maximumFractionDigits: 0 }).format(n))
-const siteUrl = () => (process.env.VITE_SITE_URL || process.env.BETTER_AUTH_URL || (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : '')).replace(/\/$/, '')
+export const siteUrl = () => (process.env.VITE_SITE_URL || process.env.BETTER_AUTH_URL || (process.env.VERCEL_PROJECT_PRODUCTION_URL ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}` : '')).replace(/\/$/, '')
 const payLabel: Record<string, string> = { transferencia: 'Transferencia bancaria', enlace: 'Tarjeta con enlace de pago', efectivo: 'Efectivo al recoger' }
 const firstName = (n: string) => esc(n.trim().split(/\s+/)[0] ?? '')
 const safeUrl = (u: unknown) => (typeof u === 'string' && /^https:\/\//.test(u) ? esc(u) : '')
@@ -53,11 +53,11 @@ function whatsappLink(text?: string) {
   return `https://wa.me/${n}${text ? `?text=${encodeURIComponent(text)}` : ''}`
 }
 
-function button(href: string, label: string, primary = true) {
+export function button(href: string, label: string, primary = true) {
   return `<a href="${href}" style="display:inline-block;${primary ? `background:${BURGUNDY};color:${CREAM};` : `background:transparent;color:${BURGUNDY};border:1px solid ${BURGUNDY};`}text-decoration:none;font-weight:600;font-size:14px;padding:14px 26px;border-radius:999px;margin:0 8px 8px 0">${label}</a>`
 }
 
-function section(title: string, html: string) {
+export function section(title: string, html: string) {
   return `<tr><td style="padding:22px 0 0">
   <p style="margin:0 0 10px;font-size:11px;letter-spacing:3px;text-transform:uppercase;font-weight:700">${title}</p>
   ${html}
@@ -65,7 +65,7 @@ function section(title: string, html: string) {
 }
 
 /** Marco común: sello oficial, título, contenido y pie con lema y redes. */
-function layout(opts: { preheader: string; title: string; intro: string; body: string }) {
+export function layout(opts: { preheader: string; title: string; intro: string; body: string; footer?: string }) {
   const url = siteUrl()
   const s = shopSettings()
   const social = [
@@ -96,6 +96,7 @@ function layout(opts: { preheader: string; title: string; intro: string; body: s
   <p style="margin:0">Piezas pintadas a mano${filled(s.city) ? ` en ${esc(s.city)}` : ''}.</p>
   ${social.length ? `<p style="margin:8px 0 0">${social.join(' &nbsp;·&nbsp; ')}</p>` : ''}
   ${url ? `<p style="margin:8px 0 0"><a href="${url}" style="color:${BURGUNDY}">${esc(url.replace(/^https?:\/\//, ''))}</a></p>` : ''}
+  ${opts.footer ?? ''}
 </td></tr>
 </table></td></tr></table></body></html>`
 }
@@ -195,14 +196,14 @@ function client() {
   return process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null
 }
 
-const from = () => process.env.EMAIL_FROM || 'Julietté <onboarding@resend.dev>'
-const ownerEmails = () =>
+export const from = () => process.env.EMAIL_FROM || 'Julietté <onboarding@resend.dev>'
+export const ownerEmails = () =>
   (process.env.ORDER_NOTIFY_EMAIL || process.env.ADMIN_EMAILS || '')
     .split(',')
     .map((e) => e.trim())
     .filter(Boolean)
 
-async function send(msg: { to: string[]; subject: string; html: string; replyTo?: string }, route: string) {
+export async function send(msg: { to: string[]; subject: string; html: string; replyTo?: string }, route: string) {
   const r = client()
   if (!r || msg.to.length === 0) return false
   try {

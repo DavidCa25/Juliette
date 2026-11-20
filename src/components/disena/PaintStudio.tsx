@@ -1,9 +1,15 @@
-import { useEffect, useId, useRef, useState, type ReactNode } from 'react'
+import { Suspense, lazy, useCallback, useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
+import { Aviso } from '../Aviso'
 import { MAX_POINTS, type BrushId, type Design, type Stroke } from '../../data/design'
 import { ToteCanvas, type DrawTool } from './ToteCanvas'
 import { PaintDefs, StickerArt, StrokesLayer, brushes, stickers, swatches } from './paint'
 import { normalize, useStickerCategory, useStickerIndex } from './stickerLibrary'
+
+const Tote3D = lazy(() => import('./Tote3D'))
+const preload3D = () => {
+  import('./Tote3D').then((m) => m.preload('tote')).catch(() => undefined)
+}
 
 type Tools = Omit<DrawTool, 'onAdd'>
 
@@ -69,7 +75,14 @@ const contrast = (a: string, b: string) => {
   return (x + 0.05) / (y + 0.05)
 }
 
-export function PaintStudio({ open, onClose, design, setDesign, palette, surfaceName, fabric }: { open: boolean; onClose: () => void; design: Design; setDesign: (fn: (d: Design) => Design) => void; palette: string[]; surfaceName: string; fabric: string }) {
+export function PaintStudio({ open, onClose, design, setDesign, palette, surfaceName, fabric, kind }: { open: boolean; onClose: () => void; design: Design; setDesign: (fn: (d: Design) => Design) => void; palette: string[]; surfaceName: string; fabric: string; kind: string }) {
+  // Pintar en plano (más preciso) o directo sobre la pieza en 3D
+  const [view, setView] = useState<'plano' | '3d'>('plano')
+  const can3d = kind === 'tote'
+  const in3d = view === '3d' && can3d
+  const layerRef = useRef<SVGSVGElement>(null)
+  const getLayer = useCallback(() => layerRef.current, [])
+  const version = useMemo(() => JSON.stringify(design), [design])
   const [tab, setTab] = useState<'pincel' | 'sticker'>('pincel')
   const [tools, setTools] = useState<Tools>({ mode: 'pincel', brush: 'pincel', color: '', size: 12, opacity: 1, sticker: 'estrella', stickerSize: 34, rotation: 0, mirror: false })
   const [redo, setRedo] = useState<Stroke[][]>([])
@@ -193,9 +206,17 @@ export function PaintStudio({ open, onClose, design, setDesign, palette, surface
     }
   })
 
+  const full = used >= MAX_POINTS
+  // Aviso una sola vez cada vez que se llena el lienzo
+  const [fullAsk, setFullAsk] = useState(false)
+  const wasFull = useRef(full)
+  useEffect(() => {
+    if (full && !wasFull.current) setFullAsk(true)
+    wasFull.current = full
+  }, [full])
+
   if (!open) return null
   const draw: DrawTool = { ...tools, mode: tab, color, onAdd: add, selected: tab === 'sticker' ? selected : null, onSelect: setSelected, onEdit: edit, onEditStart: snapshot }
-  const full = used >= MAX_POINTS
 
   const swatchRow = (
     <Section title="Color">
@@ -248,10 +269,51 @@ export function PaintStudio({ open, onClose, design, setDesign, palette, surface
       <div className="flex-1 min-h-0 flex flex-col lg:grid lg:grid-cols-[1fr_400px]">
         {/* Lienzo */}
         <div className="jl-studio relative flex items-center justify-center p-3 sm:p-6 h-[50vh] lg:h-auto flex-none lg:min-h-0">
-          <div className="h-full max-w-full" style={{ aspectRatio: '600 / 740' }}>
-            <ToteCanvas design={design} draw={full ? undefined : draw} showPedestal={false} />
+          {can3d && (
+            <div className="absolute top-3 left-3 z-10 flex p-1 rounded-full bg-[#2a0a10]/45 backdrop-blur-sm" role="group" aria-label="Dónde pintar">
+              {(['plano', '3d'] as const).map((v) => (
+                <button
+                  key={v}
+                  type="button"
+                  aria-pressed={view === v}
+                  onPointerEnter={v === '3d' ? preload3D : undefined}
+                  onTouchStart={v === '3d' ? preload3D : undefined}
+                  onClick={() => {
+                    setView(v)
+                    setSelected(null)
+                  }}
+                  className={`h-9 px-4 rounded-full border-0 text-[12px] font-semibold tracking-[1px] cursor-pointer transition-colors ${view === v ? 'bg-crema text-borgona' : 'bg-transparent text-crema'}`}
+                >
+                  {v === 'plano' ? 'Pintar en plano' : 'Pintar en 3D'}
+                </button>
+              ))}
+            </div>
+          )}
+          <div className="relative h-full max-w-full" style={{ aspectRatio: '600 / 740' }}>
+            {in3d ? (
+              <Suspense fallback={<p className="absolute inset-0 m-0 flex items-center justify-center text-crema text-[13px] tracking-[2px] uppercase font-semibold">Cargando 3D…</p>}>
+                <Tote3D kind={kind} surface={design.surface} getDesignSvg={getLayer} version={version} paint={full ? undefined : draw} />
+              </Suspense>
+            ) : (
+              <ToteCanvas design={design} draw={full ? undefined : draw} showPedestal={false} />
+            )}
           </div>
-          {full && <p className="absolute bottom-3 left-1/2 -translate-x-1/2 m-0 px-4 py-2 rounded-full bg-crema text-[12px] font-semibold">Llegaste al máximo de trazos. Deshaz alguno para seguir.</p>}
+          {in3d && (
+            <div className="hidden" aria-hidden="true">
+              <ToteCanvas ref={layerRef} design={design} layer="design" />
+            </div>
+          )}
+          {full && <p className="absolute bottom-3 left-1/2 -translate-x-1/2 m-0 px-4 py-2 rounded-full bg-crema text-[12px] font-semibold">Ya no cabe ni una pincelada. Deshaz algún trazo para seguir.</p>}
+          <Aviso
+            open={fullAsk}
+            onClose={() => setFullAsk(false)}
+            eyebrow="Lienzo lleno"
+            title="Ya no cabe"
+            accent="ni una pincelada"
+            body="Tu lienzo está lleno de ideas. Deshaz algunos trazos o usa la goma para hacerle espacio a la siguiente."
+            primary={{ label: 'Deshacer el último', onClick: () => { undo(); setFullAsk(false) } }}
+            secondary={{ label: 'Así me gusta', onClick: () => setFullAsk(false) }}
+          />
         </div>
 
         {/* Herramientas */}

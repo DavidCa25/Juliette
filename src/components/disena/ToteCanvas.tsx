@@ -1,4 +1,4 @@
-import { forwardRef, useCallback, useId, useRef, useState, type PointerEvent as RPointerEvent } from 'react'
+import { forwardRef, memo, useCallback, useId, useImperativeHandle, useMemo, useRef, useState, type PointerEvent as RPointerEvent } from 'react'
 import { Isotipo } from '../brand/Isotipo'
 import { STAR_PATH } from '../ui'
 import { MAX_POINTS, fonts, palettes, sizes, surfaces, type BrushId, type Design, type MotifId, type StickerId, type Stroke, type Surface, type SurfaceKind } from '../../data/design'
@@ -405,6 +405,30 @@ function SurfaceBase({ s, showPedestal, id }: { s: Surface; showPedestal: boolea
   )
 }
 
+type LiveHandle = { set: (p: number[] | null) => void }
+
+/** Capa ligera encima de la pieza que solo muestra el trazo mientras se pinta. */
+const LiveOverlay = forwardRef<LiveHandle, { draw: DrawTool; mirrorX: (x: number) => number; kind: SurfaceKind }>(function LiveOverlay({ draw, mirrorX, kind }, ref) {
+  const [p, setP] = useState<number[] | null>(null)
+  const clipId = useId().replace(/[^a-zA-Z0-9_-]/g, '')
+  useImperativeHandle(ref, () => ({ set: setP }), [])
+  if (!p) return null
+  return (
+    <svg viewBox="0 0 600 740" className="absolute inset-0 w-full h-full pointer-events-none" aria-hidden="true">
+      <defs>
+        <clipPath id={`lc-${clipId}`}>{bodyShape(kind)}</clipPath>
+      </defs>
+      <g clipPath={`url(#lc-${clipId})`}>
+        <LiveStroke p={p} brush={draw.brush} color={draw.color} size={draw.size} opacity={draw.opacity} />
+        {draw.mirror && <LiveStroke p={p.map((v, i) => (i % 2 === 0 ? mirrorX(v) : v))} brush={draw.brush} color={draw.color} size={draw.size} opacity={draw.opacity} />}
+      </g>
+    </svg>
+  )
+})
+
+/** Zona del frente de la tote (x, y, ancho, alto) que se usa como textura en 3D. */
+export const DESIGN_BOX = [126, 228, 348, 448] as const
+
 /** Herramienta activa del estudio de pintura. */
 export type DrawTool = {
   mode: 'pincel' | 'sticker'
@@ -434,8 +458,12 @@ function stickerHandles(st: Extract<Stroke, { t: 'stamp' }>) {
   return { half, handle: rot(half, -half), remove: rot(-half, -half), corners: [rot(-half, -half), rot(half, -half), rot(half, half), rot(-half, half)] }
 }
 
+/** La pieza (tela, costuras, etiqueta) no cambia mientras se pinta: se dibuja una vez y se reutiliza. */
+const MemoSurface = memo(SurfaceBase)
+
 /** Vista previa de la pieza: se actualiza en vivo con cada decisión. */
-export const ToteCanvas = forwardRef<SVGSVGElement, { design: Design; showPedestal?: boolean; draw?: DrawTool }>(function ToteCanvas({ design, showPedestal = true, draw }, ref) {
+/** layer="design": solo lo pintado (motivo, texto y trazos), recortado al frente de la tote y sin fondo; sirve como textura del modelo 3D. */
+export const ToteCanvas = forwardRef<SVGSVGElement, { design: Design; showPedestal?: boolean; draw?: DrawTool; layer?: 'design' }>(function ToteCanvas({ design, showPedestal = true, draw, layer }, ref) {
   // Pintar a mano: los trazos se guardan en coordenadas de la vista previa
   const local = useRef<SVGSVGElement | null>(null)
   const setRefs = useCallback(
@@ -446,7 +474,31 @@ export const ToteCanvas = forwardRef<SVGSVGElement, { design: Design; showPedest
     },
     [ref],
   )
-  const [live, setLive] = useState<number[] | null>(null)
+  // Trazo en curso: se guarda en una referencia y se dibuja en una capa aparte, sin filtros,
+  // para que la pieza (con sus texturas pesadas) no se vuelva a dibujar en cada movimiento
+  const liveRef = useRef<number[] | null>(null)
+  const overlay = useRef<LiveHandle>(null)
+  const frameRef = useRef(0)
+  const pushLive = () => {
+    if (frameRef.current) return
+    frameRef.current = requestAnimationFrame(() => {
+      frameRef.current = 0
+      overlay.current?.set(liveRef.current ? liveRef.current.slice() : null)
+    })
+  }
+  // Mover un sticker también se agrupa por cuadro de animación (como mucho un cambio por cuadro)
+  const editRef = useRef<{ i: number; patch: Partial<Extract<Stroke, { t: 'stamp' }>> } | null>(null)
+  const editFrame = useRef(0)
+  const queueEdit = (i: number, patch: Partial<Extract<Stroke, { t: 'stamp' }>>) => {
+    editRef.current = { i, patch: { ...(editRef.current?.i === i ? editRef.current.patch : {}), ...patch } }
+    if (editFrame.current) return
+    editFrame.current = requestAnimationFrame(() => {
+      editFrame.current = 0
+      const e = editRef.current
+      editRef.current = null
+      if (e) draw?.onEdit?.(e.i, e.patch)
+    })
+  }
   const used = (design.strokes ?? []).reduce((n, st) => n + (st.t === 'line' ? st.p.length / 2 : 1), 0)
   const toPoint = (e: RPointerEvent<SVGSVGElement>) => {
     const svg = local.current
@@ -518,7 +570,8 @@ export const ToteCanvas = forwardRef<SVGSVGElement, { design: Design; showPedest
     }
     if (used >= MAX_POINTS) return
     capture(e)
-    setLive(p)
+    liveRef.current = [p[0], p[1]]
+    pushLive()
   }
   const onMove = (e: RPointerEvent<SVGSVGElement>) => {
     if (!draw) return
@@ -526,7 +579,7 @@ export const ToteCanvas = forwardRef<SVGSVGElement, { design: Design; showPedest
     if (!p) return
     const d = drag.current
     if (d) {
-      if (d.kind === 'move') draw.onEdit?.(d.i, { x: Math.round((p[0] - d.dx) * 10) / 10, y: Math.round((p[1] - d.dy) * 10) / 10 })
+      if (d.kind === 'move') queueEdit(d.i, { x: Math.round((p[0] - d.dx) * 10) / 10, y: Math.round((p[1] - d.dy) * 10) / 10 })
       else {
         const st = design.strokes?.[d.i]
         if (!st || st.t !== 'stamp') return
@@ -534,32 +587,37 @@ export const ToteCanvas = forwardRef<SVGSVGElement, { design: Design; showPedest
         const ang = Math.atan2(p[1] - st.y, p[0] - st.x)
         const s2 = Math.max(0.4, Math.min(12, (d.s0 * dist) / Math.max(4, d.d0)))
         const r2 = Math.round(d.r0 + ((ang - d.a0) * 180) / Math.PI)
-        draw.onEdit?.(d.i, { s: Math.round(s2 * 100) / 100, r: ((r2 + 540) % 360) - 180 })
+        queueEdit(d.i, { s: Math.round(s2 * 100) / 100, r: ((r2 + 540) % 360) - 180 })
       }
       return
     }
+    const live = liveRef.current
     if (!live) return
     const lx = live[live.length - 2]
     const ly = live[live.length - 1]
     if (Math.hypot(p[0] - lx, p[1] - ly) < (draw.brush === 'aerosol' ? 4 : 2.2)) return
-    setLive([...live, p[0], p[1]])
+    live.push(p[0], p[1])
+    pushLive()
   }
   const onUp = () => {
     if (drag.current) {
       drag.current = null
       return
     }
+    const live = liveRef.current
     if (!draw || !live) return
     const pts = live.length >= 4 ? live : [...live, live[0] + 0.1, live[1]]
     const st: Stroke = { t: 'line', b: draw.brush, c: draw.color, w: draw.size, o: draw.opacity, p: pts }
     draw.onAdd(draw.mirror ? [st, { ...st, p: pts.map((v, i) => (i % 2 === 0 ? mirrorX(v) : v)) }] : [st])
-    setLive(null)
+    liveRef.current = null
+    pushLive()
   }
 
   const uid = useId().replace(/[^a-zA-Z0-9_-]/g, '')
-  const id = Object.fromEntries(
-    (['rib', 'weave', 'noise', 'twill', 'grain', 'side', 'top', 'soft', 'paint', 'clip', 'wood', 'pages', 'strap', 'elastic', 'water', 'dry'] as const).map((k) => [k, `jl-${k}-${uid}`]),
-  ) as Ids
+  const id = useMemo(
+    () => Object.fromEntries((['rib', 'weave', 'noise', 'twill', 'grain', 'side', 'top', 'soft', 'paint', 'clip', 'wood', 'pages', 'strap', 'elastic', 'water', 'dry'] as const).map((k) => [k, `jl-${k}-${uid}`])) as Ids,
+    [uid],
+  )
   const surface = surfaces.find((x) => x.id === design.surface) ?? surfaces[0]
   const g = geometry[surface.kind]
   const palette = adaptColors(palettes.find((p) => p.id === design.palette)!.colors, surface.dark)
@@ -578,9 +636,10 @@ export const ToteCanvas = forwardRef<SVGSVGElement, { design: Design; showPedest
   const cx = surface.kind === 'agenda' ? 312 : 300
 
   return (
+    <div className="relative">
     <svg
       ref={setRefs}
-      viewBox="0 0 600 740"
+      viewBox={layer ? DESIGN_BOX.join(' ') : '0 0 600 740'}
       role="img"
       aria-label={label}
       className="w-full h-auto block"
@@ -661,9 +720,11 @@ export const ToteCanvas = forwardRef<SVGSVGElement, { design: Design; showPedest
         <PaintDefs water={id.water} dry={id.dry} />
       </defs>
 
-      <g key={surface.id} className="jl-svg-pop">
-        <SurfaceBase s={surface} showPedestal={showPedestal} id={id} />
-      </g>
+      {!layer && (
+        <g key={surface.id} className="jl-svg-pop">
+          <MemoSurface s={surface} showPedestal={showPedestal} id={id} />
+        </g>
+      )}
 
       <g clipPath={`url(#${id.clip})`}>
         <g transform={`translate(${cx} ${motifY}) scale(${motifScale})`}>
@@ -674,14 +735,8 @@ export const ToteCanvas = forwardRef<SVGSVGElement, { design: Design; showPedest
 
         {/* Lo que pintó el cliente: cada pincel con su propia textura */}
         <StrokesLayer strokes={design.strokes ?? []} uid={uid} f={{ paint: id.paint, water: id.water, dry: id.dry }} />
-        {live && draw && (
-          <g pointerEvents="none">
-            <LiveStroke p={live} brush={draw.brush} color={draw.color} size={draw.size} opacity={draw.opacity} />
-            {draw.mirror && <LiveStroke p={live.map((v, i) => (i % 2 === 0 ? mirrorX(v) : v))} brush={draw.brush} color={draw.color} size={draw.size} opacity={draw.opacity} />}
-          </g>
-        )}
         {draw?.mirror && <line x1={cx} y1={60} x2={cx} y2={700} stroke={palette[0]} strokeOpacity={0.35} strokeWidth={1.2} strokeDasharray="4 6" pointerEvents="none" />}
-        {design.motif === 'lienzo' && !design.strokes?.length && !live && (
+        {!layer && design.motif === 'lienzo' && !design.strokes?.length && (
           <g pointerEvents="none" opacity={0.75}>
             <rect x={cx - 110} y={g.cy - 120} width={220} height={240} rx={18} fill="none" stroke={palette[0]} strokeWidth={2} strokeDasharray="6 8" />
             <text x={cx} y={g.cy - 8} textAnchor="middle" fontFamily="'Cormorant Garamond', serif" fontStyle="italic" fontSize={34} fill={palette[0]}>Pinta aquí</text>
@@ -712,10 +767,10 @@ export const ToteCanvas = forwardRef<SVGSVGElement, { design: Design; showPedest
         )}
 
         {/* La trama de la tela se ve a través de la pintura */}
-        {isDenim ? <rect x={0} y={0} width={600} height={740} fill={`url(#${id.twill})`} opacity={0.4} /> : <rect x={0} y={0} width={600} height={740} fill="#fff" filter={`url(#${id.noise})`} opacity={0.5} />}
+        {!layer && (isDenim ? <rect x={0} y={0} width={600} height={740} fill={`url(#${id.twill})`} opacity={0.4} /> : <rect x={0} y={0} width={600} height={740} fill="#fff" filter={`url(#${id.noise})`} opacity={0.5} />)}
       </g>
 
-      {draw?.mode === 'sticker' && draw.selected != null && design.strokes?.[draw.selected]?.t === 'stamp' && (() => {
+      {!layer && draw?.mode === 'sticker' && draw.selected != null && design.strokes?.[draw.selected]?.t === 'stamp' && (() => {
         const st = design.strokes![draw.selected!] as Extract<Stroke, { t: 'stamp' }>
         const h = stickerHandles(st)
         return (
@@ -730,22 +785,63 @@ export const ToteCanvas = forwardRef<SVGSVGElement, { design: Design; showPedest
         )
       })()}
 
-      {showBack && (
+      {!layer && showBack && (
         <g transform="translate(300 652)">
           <rect x={-58} y={-14} width={116} height={28} rx={14} fill="#82001a" />
           <text textAnchor="middle" dominantBaseline="middle" fontFamily="Montserrat, sans-serif" fontSize={12} fontWeight={600} letterSpacing={1.5} fill="#fdf6ee">+ REVERSO</text>
         </g>
       )}
     </svg>
+      {draw && <LiveOverlay ref={overlay} draw={draw} mirrorX={mirrorX} kind={surface.kind} />}
+    </div>
   )
 })
+
+/**
+ * Las imágenes SVG no pueden usar las fuentes web de la página, así que al convertir el diseño a imagen
+ * se incrustan Cormorant, Montserrat y Pinyon Script (solo los caracteres latinos) como datos dentro del SVG.
+ */
+let fontCss: Promise<string> | null = null
+function embeddedFonts() {
+  fontCss ??= (async () => {
+    const link = document.querySelector<HTMLLinkElement>('link[href*="fonts.googleapis.com/css2"]')
+    if (!link) return ''
+    const css = await fetch(link.href).then((r) => r.text())
+    // Cada bloque @font-face va precedido de un comentario con el subconjunto; se toman solo los latinos
+    const blocks = css.split('/*').filter((b) => /^\s*latin\s*\*\//.test(b)).map((b) => b.slice(b.indexOf('@font-face')))
+    const out = await Promise.all(
+      blocks.map(async (b) => {
+        const url = /url\((https:[^)]+)\)/.exec(b)?.[1]
+        if (!url) return ''
+        const buf = await fetch(url).then((r) => r.arrayBuffer())
+        let bin = ''
+        const bytes = new Uint8Array(buf)
+        for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000))
+        return b.replace(url, `data:font/woff2;base64,${btoa(bin)}`)
+      }),
+    )
+    return out.join('\n')
+  })().catch(() => '')
+  return fontCss
+}
+
+/** Serializa un SVG con las fuentes incrustadas, listo para dibujarlo como imagen. */
+export async function serializeWithFonts(svg: SVGSVGElement) {
+  const css = await embeddedFonts()
+  if (css) {
+    const style = document.createElementNS('http://www.w3.org/2000/svg', 'style')
+    style.textContent = css
+    svg.insertBefore(style, svg.firstChild)
+  }
+  return new XMLSerializer().serializeToString(svg)
+}
 
 /** Convierte la vista previa en imagen PNG (para el carrito o para descargar). */
 export async function svgToPng(svg: SVGSVGElement, width = 900, background = '#5f272d'): Promise<string> {
   const clone = svg.cloneNode(true) as SVGSVGElement
   clone.setAttribute('width', String(width))
   clone.setAttribute('height', String(Math.round((width * 740) / 600)))
-  const xml = new XMLSerializer().serializeToString(clone)
+  const xml = await serializeWithFonts(clone)
   const url = URL.createObjectURL(new Blob([xml], { type: 'image/svg+xml;charset=utf-8' }))
   try {
     const img = new Image()
