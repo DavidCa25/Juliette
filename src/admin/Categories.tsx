@@ -75,12 +75,9 @@ export function Categories({ draft, onChange, onOpenProducts }: { draft: AdminCo
           const isNew = fresh.includes(c.id)
           return (
             <li key={i} className="border-t border-borgona py-5 grid grid-cols-[72px_1fr] sm:grid-cols-[88px_1fr_auto] gap-x-5 gap-y-4 items-start">
-              <div className="flex flex-col gap-2 items-center">
-                <span className="w-[72px] sm:w-[88px] aspect-[4/5] rounded-t-full overflow-hidden bg-vino flex items-center justify-center">
-                  {c.cover ? <img src={c.cover} alt="" className="w-full h-full object-cover" /> : <span className="text-crema/70 text-[11px] text-center px-2">Sin portada</span>}
-                </span>
-                <UploadButton accept="image/*" folder="ajustes" label={c.cover ? 'Cambiar' : 'Portada'} onUploaded={(url) => edit(c.id, { cover: url })} />
-              </div>
+              <span className="w-[72px] sm:w-[88px] aspect-[4/5] rounded-t-full overflow-hidden bg-vino flex items-center justify-center">
+                {c.cover ? <img src={c.cover} alt="" className="w-full h-full object-cover" /> : <span className="text-crema/70 text-[11px] text-center px-2">Sin portada</span>}
+              </span>
 
               <div className="flex flex-col gap-3 min-w-0">
                 <label className="flex flex-col gap-1">
@@ -99,6 +96,14 @@ export function Categories({ draft, onChange, onOpenProducts }: { draft: AdminCo
                   </button>
                   {c.hidden ? ' · Oculta' : n === 0 ? ' · No se muestra hasta que tenga piezas' : ''}
                 </span>
+                <div className="flex flex-wrap items-center gap-4">
+                  <UploadButton accept="image/*" folder="ajustes" label={c.cover ? 'Cambiar portada' : 'Subir portada'} onUploaded={(url) => edit(c.id, { cover: url })} />
+                  {c.cover && (
+                    <button type="button" onClick={() => edit(c.id, { cover: '' })} className="jl-link bg-transparent border-0 p-0 text-borgona text-[13px] font-semibold cursor-pointer">
+                      Quitar portada
+                    </button>
+                  )}
+                </div>
                 {removing?.id === c.id && (
                   <div role="group" aria-label={`Eliminar ${c.name}`} className="flex flex-wrap items-end gap-3 p-4 rounded-[16px] bg-rosa/50">
                     {n > 0 ? (
