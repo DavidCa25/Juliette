@@ -1,4 +1,5 @@
 import { createAuthClient } from 'better-auth/react'
+import type { ShopCategory } from '../data/categories'
 
 /** Cliente de Better Auth (mismo dominio que el sitio). */
 export const authClient = createAuthClient()
@@ -8,7 +9,12 @@ export type AdminProduct = {
   slug: string
   name: string
   code: string
+  /** Tipo de pieza (tote, prenda…): decide si se pide talla o medida */
   category: string
+  /** Categoría de la tienda donde aparece (id de la lista de Categorías) */
+  section: string
+  /** Fecha en que se agregó (AAAA-MM-DD) */
+  added: string
   collection: string
   price: number | null
   status: string
@@ -27,7 +33,7 @@ export type AdminProduct = {
   video: string | null
 }
 export type AdminVideo = { title: string; tag: string; video: string; poster?: string }
-export type AdminSettings = Record<string, unknown> & { videos?: AdminVideo[] }
+export type AdminSettings = Record<string, unknown> & { videos?: AdminVideo[]; categories?: ShopCategory[] }
 export type AdminContent = { settings: AdminSettings; products: AdminProduct[] }
 
 export type Me =

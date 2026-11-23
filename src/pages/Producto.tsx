@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { track } from '../lib/analytics'
 import { Link, useParams } from 'react-router-dom'
 import { getProduct, products } from '../data/products'
-import { site } from '../config/site'
+import { shopCategories, site } from '../config/site'
 import { money } from '../lib/format'
 import { openWhatsApp } from '../lib/whatsapp'
 import { usePageMeta } from '../lib/usePageMeta'
@@ -74,7 +74,9 @@ export default function Producto() {
     openWhatsApp(lines.join('\n'))
   }
 
-  const related = products.filter((p) => p.slug !== product.slug).slice(0, 2)
+  // Primero piezas de la misma categoría; si no hay suficientes, se completa con otras
+  const others = products.filter((p) => p.slug !== product.slug)
+  const related = [...others.filter((p) => p.section === product.section), ...others.filter((p) => p.section !== product.section)].slice(0, 2)
 
   return (
     <>
@@ -84,6 +86,15 @@ export default function Producto() {
           <span aria-hidden="true">/</span>
           <Link className="jl-link" to="/coleccion">Colección</Link>
           <span aria-hidden="true">/</span>
+          {(() => {
+            const c = shopCategories.find((x) => x.id === product.section && !x.hidden)
+            return c ? (
+              <>
+                <Link className="jl-link" to={`/coleccion/${c.id}`}>{c.name}</Link>
+                <span aria-hidden="true">/</span>
+              </>
+            ) : null
+          })()}
           <span className="font-semibold" aria-current="page">{product.name}</span>
         </nav>
 

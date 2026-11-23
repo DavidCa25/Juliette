@@ -41,6 +41,10 @@ export function cleanProduct(p: Record<string, unknown>) {
     name,
     code: str(p.code, 40),
     category: CATEGORIES.includes(String(p.category)) ? String(p.category) : 'otro',
+    // Categoría de la tienda (ej. planners); vacía = la que corresponde a su tipo de pieza
+    section: cleanSlug(p.section),
+    // Fecha en que se agregó (para ordenar por "Más nuevas")
+    added: /^\d{4}-\d{2}-\d{2}$/.test(String(p.added)) ? String(p.added) : '',
     collection: str(p.collection, 80) || 'Colección',
     price: num(p.price),
     status: STATUS.includes(String(p.status)) ? String(p.status) : 'disponible',
@@ -106,5 +110,13 @@ export function cleanSettings(s: Record<string, unknown>) {
         return { title: str(x.title, 80), tag: str(x.tag, 60), video: media(x.video), poster: media(x.poster) }
       })
       .filter((v) => v.video),
+    categories: (Array.isArray(s.categories) ? s.categories : [])
+      .slice(0, 40)
+      .map((c) => {
+        const x = o(c)
+        const name = str(x.name, 60)
+        return { id: cleanSlug(x.id || name).slice(0, 60), name, description: str(x.description, 280), cover: media(x.cover), hidden: x.hidden === true }
+      })
+      .filter((c, i, all) => c.id && c.name && all.findIndex((y) => y.id === c.id) === i),
   }
 }

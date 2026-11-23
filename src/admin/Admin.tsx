@@ -8,8 +8,12 @@ import { SettingsEditor } from './SettingsEditor'
 import { Stats } from './Stats'
 import { Newsletter } from './Newsletter'
 import { Orders } from './Orders'
+import { Categories } from './Categories'
+import { categoryForType, readCategories } from '../data/categories'
 
-type Tab = 'resumen' | 'pedidos' | 'boletin' | 'productos' | 'ajustes'
+type Tab = 'resumen' | 'pedidos' | 'boletin' | 'productos' | 'categorias' | 'ajustes'
+type ProductSort = 'orden' | 'nuevas' | 'nombre' | 'precio'
+const today = () => new Date().toISOString().slice(0, 10)
 const DRAFT_KEY = 'jl-admin-draft-v1'
 const categoryLabel: Record<string, string> = { tote: 'Tote bag', prenda: 'Prenda', cuadro: 'Cuadro', agenda: 'Agenda', accesorio: 'Accesorio', hogar: 'Hogar', otro: 'Otra' }
 const statusLabel: Record<string, string> = { disponible: 'Disponible', 'bajo-pedido': 'Bajo pedido', agotado: 'Agotado' }
@@ -20,6 +24,8 @@ function normalize(p: Partial<AdminProduct> & { slug: string }): AdminProduct {
     name: p.name ?? '',
     code: p.code ?? '',
     category: p.category ?? 'tote',
+    section: p.section || categoryForType[p.category ?? 'tote'] || 'otras-piezas',
+    added: p.added ?? '',
     collection: p.collection ?? 'Colección 01',
     price: typeof p.price === 'number' ? p.price : null,
     status: p.status ?? 'disponible',
@@ -117,6 +123,11 @@ function Dashboard({ me }: { me: Extract<Me, { signedIn: true }> }) {
   const [newSlugs, setNewSlugs] = useState<string[]>([])
   const [publishing, setPublishing] = useState(false)
   const [notice, setNotice] = useState('')
+  // Lista de productos: búsqueda, filtros y orden (pensado para cuando haya muchas piezas)
+  const [pq, setPq] = useState('')
+  const [pCat, setPCat] = useState('')
+  const [pStatus, setPStatus] = useState('')
+  const [pSort, setPSort] = useState<ProductSort>('orden')
 
   const load = useCallback(async () => {
     setError('')
@@ -165,7 +176,29 @@ function Dashboard({ me }: { me: Extract<Me, { signedIn: true }> }) {
     return <p className="text-[15px]" aria-busy="true">Cargando contenido…</p>
   }
 
-  const products = [...draft.products].sort((a, b) => a.order - b.order || a.name.localeCompare(b.name))
+  const byOrder = [...draft.products].sort((a, b) => a.order - b.order || a.name.localeCompare(b.name))
+  const cats = readCategories(draft.settings.categories)
+  const catName = (id: string) => cats.find((c) => c.id === id)?.name ?? 'Sin categoría'
+  const norm = (x: string) => x.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+  const products = byOrder
+    .filter((p) => (!pCat || p.section === pCat) && (!pStatus || p.status === pStatus) && (!pq.trim() || norm(`${p.name} ${p.code} ${p.short}`).includes(norm(pq.trim()))))
+    .sort((a, b) =>
+      pSort === 'nombre' ? a.name.localeCompare(b.name) : pSort === 'precio' ? (a.price ?? Infinity) - (b.price ?? Infinity) : pSort === 'nuevas' ? (b.added || '').localeCompare(a.added || '') : 0,
+    )
+  const filtering = !!(pq.trim() || pCat || pStatus)
+
+  /** Sube o baja una pieza en el orden del sitio (intercambia su lugar con la vecina de la lista). */
+  function moveProduct(slug: string, d: -1 | 1) {
+    const i = products.findIndex((p) => p.slug === slug)
+    const other = products[i + d]
+    if (!other) return
+    // Se renumera todo de 10 en 10 para que el intercambio siempre tenga efecto
+    const rank = new Map(byOrder.map((p, k) => [p.slug, (k + 1) * 10]))
+    const a = rank.get(slug)!
+    rank.set(slug, rank.get(other.slug)!)
+    rank.set(other.slug, a)
+    setDraft((x) => (x ? { ...x, products: x.products.map((p) => ({ ...p, order: rank.get(p.slug) ?? p.order })) } : x))
+  }
   const current = draft.products.find((p) => p.slug === editing) ?? null
 
   function updateProduct(p: AdminProduct) {
@@ -188,7 +221,7 @@ function Dashboard({ me }: { me: Extract<Me, { signedIn: true }> }) {
   function addProduct() {
     const slug = `pieza-${Date.now().toString(36)}`
     const maxOrder = Math.max(0, ...draft!.products.map((p) => p.order))
-    setDraft((d) => (d ? { ...d, products: [...d.products, normalize({ slug, order: maxOrder + 1 })] } : d))
+    setDraft((d) => (d ? { ...d, products: [...d.products, normalize({ slug, order: maxOrder + 1, added: today(), section: pCat || undefined })] } : d))
     setNewSlugs((s) => [...s, slug])
     setEditing(slug)
     setTab('productos')
@@ -247,9 +280,9 @@ function Dashboard({ me }: { me: Extract<Me, { signedIn: true }> }) {
           </div>
 
           <div role="tablist" aria-label="Secciones" className="flex gap-1 border-b border-borgona/25 overflow-x-auto overflow-y-hidden">
-            {(['resumen', 'pedidos', 'boletin', 'productos', 'ajustes'] as const).map((t) => (
+            {(['resumen', 'pedidos', 'boletin', 'productos', 'categorias', 'ajustes'] as const).map((t) => (
               <button key={t} role="tab" type="button" aria-selected={tab === t} onClick={() => setTab(t)} className={`min-h-[48px] px-4 sm:px-5 bg-transparent border-0 border-b-2 text-borgona text-[14px] sm:text-[15px] font-semibold cursor-pointer -mb-px whitespace-nowrap ${tab === t ? 'border-borgona' : 'border-transparent opacity-60'}`}>
-                {t === 'resumen' ? 'Resumen' : t === 'pedidos' ? 'Pedidos' : t === 'boletin' ? 'Boletín' : t === 'productos' ? `Productos (${draft.products.length})` : 'Ajustes'}
+                {t === 'resumen' ? 'Resumen' : t === 'pedidos' ? 'Pedidos' : t === 'boletin' ? 'Boletín' : t === 'productos' ? `Productos (${draft.products.length})` : t === 'categorias' ? 'Categorías' : 'Ajustes'}
               </button>
             ))}
           </div>
@@ -257,35 +290,88 @@ function Dashboard({ me }: { me: Extract<Me, { signedIn: true }> }) {
       )}
 
       {current ? (
-        <ProductEditor product={current} isNew={newSlugs.includes(current.slug)} onChange={updateProduct} onClose={() => setEditing(null)} onDelete={() => removeProduct(current.slug)} />
+        <ProductEditor categories={cats} product={current} isNew={newSlugs.includes(current.slug)} onChange={updateProduct} onClose={() => setEditing(null)} onDelete={() => removeProduct(current.slug)} />
       ) : tab === 'resumen' ? (
         <Stats productNames={Object.fromEntries(draft.products.map((p) => [p.slug, p.name]))} />
       ) : tab === 'pedidos' ? (
         <Orders />
       ) : tab === 'boletin' ? (
         <Newsletter />
+      ) : tab === 'categorias' ? (
+        <Categories draft={draft} onChange={setDraft} onOpenProducts={(id) => { setPCat(id); setPq(''); setPStatus(''); setTab('productos') }} />
       ) : tab === 'productos' ? (
+        <div className="flex flex-col gap-5">
+        <div className="flex flex-wrap items-end gap-x-6 gap-y-4">
+          <label className="flex flex-col gap-1 flex-[1_1_220px]">
+            <span className="jl-label">Buscar</span>
+            <input type="search" value={pq} onChange={(e) => setPq(e.target.value)} placeholder="Nombre o código" className="jl-field" />
+          </label>
+          <label className="flex flex-col gap-1">
+            <span className="jl-label">Categoría</span>
+            <select value={pCat} onChange={(e) => setPCat(e.target.value)} className="jl-field cursor-pointer min-w-[180px]">
+              <option value="">Todas</option>
+              {cats.map((c) => (
+                <option key={c.id} value={c.id}>{c.name} ({draft.products.filter((p) => p.section === c.id).length})</option>
+              ))}
+            </select>
+          </label>
+          <label className="flex flex-col gap-1">
+            <span className="jl-label">Estado</span>
+            <select value={pStatus} onChange={(e) => setPStatus(e.target.value)} className="jl-field cursor-pointer min-w-[150px]">
+              <option value="">Todos</option>
+              {Object.entries(statusLabel).map(([v, l]) => (
+                <option key={v} value={v}>{l}</option>
+              ))}
+            </select>
+          </label>
+          <label className="flex flex-col gap-1">
+            <span className="jl-label">Ordenar</span>
+            <select value={pSort} onChange={(e) => setPSort(e.target.value as ProductSort)} className="jl-field cursor-pointer min-w-[170px]">
+              <option value="orden">Orden del sitio</option>
+              <option value="nuevas">Más nuevas</option>
+              <option value="nombre">Nombre</option>
+              <option value="precio">Precio</option>
+            </select>
+          </label>
+        </div>
+        <p className="m-0 text-[13px]">
+          {filtering ? `${products.length} de ${draft.products.length} piezas` : `${draft.products.length} piezas`}
+          {pSort === 'orden' ? ' · Usa ↑ ↓ para cambiar el orden en el sitio.' : ''}
+          {filtering && (
+            <>
+              {' · '}
+              <button type="button" onClick={() => { setPq(''); setPCat(''); setPStatus('') }} className="jl-link bg-transparent border-0 p-0 text-borgona text-[13px] font-semibold cursor-pointer">Quitar filtros</button>
+            </>
+          )}
+        </p>
         <ul className="m-0 p-0 list-none flex flex-col border-b border-borgona">
-          {products.map((p) => (
-            <li key={p.slug}>
-              <button type="button" onClick={() => setEditing(p.slug)} className="jl-opt w-full flex items-center gap-5 py-4 px-2 bg-transparent border-0 border-t border-borgona text-borgona text-left cursor-pointer">
+          {products.map((p, i) => (
+            <li key={p.slug} className="flex items-stretch border-t border-borgona">
+              {pSort === 'orden' && (
+                <span className="flex flex-col justify-center gap-1 pr-2">
+                  <button type="button" disabled={i === 0} onClick={() => moveProduct(p.slug, -1)} aria-label={`Subir ${p.name}`} className="w-9 h-9 rounded-full border border-borgona/25 bg-transparent text-borgona text-[13px] cursor-pointer disabled:opacity-25">↑</button>
+                  <button type="button" disabled={i === products.length - 1} onClick={() => moveProduct(p.slug, 1)} aria-label={`Bajar ${p.name}`} className="w-9 h-9 rounded-full border border-borgona/25 bg-transparent text-borgona text-[13px] cursor-pointer disabled:opacity-25">↓</button>
+                </span>
+              )}
+              <button type="button" onClick={() => setEditing(p.slug)} className="jl-opt flex-1 min-w-0 flex items-center gap-5 py-4 px-2 bg-transparent border-0 text-borgona text-left cursor-pointer">
                 <span className="w-[56px] h-[70px] flex-none rounded-t-full overflow-hidden bg-vino">{p.images[0] && <img src={p.images[0].src} alt="" className="w-full h-full object-cover" />}</span>
                 <span className="flex-1 min-w-0 flex flex-col gap-1">
                   <span className="font-display text-[28px] leading-none truncate">{p.name || 'Sin nombre'}</span>
-                  <span className="text-[13px]">{categoryLabel[p.category] ?? p.category} · {statusLabel[p.status] ?? p.status}{p.featured ? ' · En el inicio' : ''}</span>
+                  <span className="text-[13px]">{catName(p.section)} · {categoryLabel[p.category] ?? p.category} · {statusLabel[p.status] ?? p.status}{p.featured ? ' · En el inicio' : ''}</span>
                 </span>
                 <span className="hidden sm:inline text-[14px] font-semibold">{money(p.price, 'Por confirmar')}</span>
                 <span aria-hidden="true" className="text-[18px]">→</span>
               </button>
             </li>
           ))}
-          {products.length === 0 && <li className="py-10 text-center text-[15px] border-t border-borgona">Aún no hay piezas. Crea la primera.</li>}
+          {products.length === 0 && <li className="py-10 text-center text-[15px] border-t border-borgona">{filtering ? 'Ninguna pieza coincide con estos filtros.' : 'Aún no hay piezas. Crea la primera.'}</li>}
         </ul>
+        </div>
       ) : (
         <SettingsEditor settings={draft.settings} onChange={(s) => setDraft((d) => (d ? { ...d, settings: s } : d))} />
       )}
 
-      {(dirty || notice || editing || tab === 'productos' || tab === 'ajustes') && (
+      {(dirty || notice || editing || tab === 'productos' || tab === 'categorias' || tab === 'ajustes') && (
       <div className="fixed left-0 right-0 bottom-0 z-40 bg-crema/95 backdrop-blur border-t border-borgona">
         <div className="max-w-[1200px] mx-auto px-5 sm:px-8 py-4 flex flex-wrap items-center justify-between gap-4">
           <p aria-live="polite" className="m-0 text-[14px]">{notice || (dirty ? 'Tienes cambios sin publicar (se guardan en este navegador).' : 'Todo está publicado.')}</p>

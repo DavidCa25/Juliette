@@ -1,8 +1,12 @@
 /**
  * Los productos viven en content/products/*.json y se agregan o editan desde /admin.
  * Cada archivo es una pieza; el nombre del archivo es su dirección (ej. galaxia → /producto/galaxia).
+ *
+ * Este módulo solo lo cargan la Colección y la página de producto (y el inicio, después de mostrarse),
+ * así el catálogo completo no pesa en la primera carga del sitio aunque haya cientos de piezas.
  */
-import { site } from '../config/site'
+import { shopCategories } from '../config/site'
+import { categoryForType } from './categories'
 
 export type Media =
   | { kind: 'image'; src: string; alt: string }
@@ -36,6 +40,10 @@ export type Product = {
   code: string
   name: string
   category: Category
+  /** Categoría de la tienda (id de shopCategories) */
+  section: string
+  /** Fecha en que se agregó (AAAA-MM-DD); vacía en piezas antiguas */
+  added: string
   collection: string
   /** null = precio por confirmar */
   price: number | null
@@ -59,6 +67,8 @@ type RawProduct = {
   name?: string
   code?: string
   category?: string
+  section?: string
+  added?: string
   collection?: string
   price?: number | string | null
   status?: string
@@ -107,6 +117,8 @@ function normalize(path: string, r: RawProduct): Product | null {
     name: r.name,
     code: r.code ?? '',
     category,
+    section: r.section && shopCategories.some((c) => c.id === r.section) ? r.section : categoryForType[category],
+    added: r.added ?? '',
     collection: r.collection ?? 'Colección',
     price: toNumber(r.price),
     status,
@@ -134,10 +146,3 @@ export const featuredProducts = (products.some((p) => p.featured) ? products.fil
 
 export const getProduct = (slug: string) => products.find((p) => p.slug === slug)
 
-export const showcaseVideos = site.videos.map((v) => ({
-  src: v.video,
-  poster: v.poster || '/media/isotipo_burdeos_md.png',
-  title: v.title,
-  tag: v.tag,
-  label: `Video: ${v.title}`,
-}))

@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
-import { featuredProducts, showcaseVideos } from '../data/products'
-import { site } from '../config/site'
+import { showcaseVideos, site } from '../config/site'
+import { useFeatured } from '../lib/catalog'
 import { usePageMeta } from '../lib/usePageMeta'
 import { money } from '../lib/format'
 import { Arrow, AutoVideo, Star, btnLight, btnPrimary, container } from '../components/ui'
@@ -100,6 +100,7 @@ function MarqueeBand() {
 }
 
 function Collection() {
+  const featuredProducts = useFeatured()
   return (
     <section id="coleccion" className={`${container} pt-[clamp(72px,10vw,150px)] pb-[clamp(40px,5vw,80px)] scroll-mt-6`}>
       <div className="flex flex-wrap justify-between items-end gap-8 mb-[clamp(40px,5vw,72px)]">
@@ -118,7 +119,15 @@ function Collection() {
         </div>
       </div>
       <div className="flex flex-wrap gap-[clamp(16px,2vw,32px)] items-start">
-        {featuredProducts.map((p, i) => (
+        {/* Mientras llega el catálogo se reserva el lugar de las dos piezas, para que nada salte */}
+        {!featuredProducts &&
+          [0, 1].map((i) => (
+            <div key={i} aria-hidden="true" className={`flex-[1_1_300px] min-w-0 flex flex-col gap-[10px] ${i === 1 ? 'mt-0 sm:mt-[clamp(0px,8vw,120px)]' : ''}`}>
+              <div className="aspect-[4/5] rounded-[24px] bg-crema/5" />
+              <div className="h-[74px] border-t border-crema/40" />
+            </div>
+          ))}
+        {featuredProducts?.map((p, i) => (
           <ProductCard key={p.slug} to={`/producto/${p.slug}`} image={p.cover} alt={`${p.name}, pieza pintada a mano`} name={p.name} meta={p.short} price={p.price} status={p.status} offset={i === 1 ? 'mt-0 sm:mt-[clamp(0px,8vw,120px)]' : ''} />
         ))}
         <ProductCard to="/design" image="/media/still_snoopy.webp" alt="Tote bag personalizada sobre pedestal, fondo borgoña" name="A tu medida" meta="Tu idea, con boceto previo" price={null} priceNote={`Desde ${money(site.customFrom)}`} status="bajo-pedido" offset="mt-0 sm:mt-[clamp(0px,3.5vw,50px)]" />

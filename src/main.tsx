@@ -48,6 +48,7 @@ const router = wrapRouter(createBrowserRouter)([
     children: [
       { path: '/', element: <Home /> },
       { path: '/coleccion', element: <Coleccion /> },
+      { path: '/coleccion/:categoria', element: <Coleccion /> },
       { path: '/producto/:slug', element: <Producto /> },
       { path: '/design', element: <Disena /> },
       { path: '/carrito', element: <Carrito /> },

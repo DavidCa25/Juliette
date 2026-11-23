@@ -1,4 +1,5 @@
 import type { AdminProduct } from './client'
+import type { ShopCategory } from '../data/categories'
 import { NumberField, Select, Text, Toggle, UploadButton } from './fields'
 
 const categoryOptions = [
@@ -16,7 +17,7 @@ const statusOptions = [
   { value: 'agotado', label: 'Agotado' },
 ]
 
-export function ProductEditor({ product, isNew, onChange, onClose, onDelete }: { product: AdminProduct; isNew: boolean; onChange: (p: AdminProduct) => void; onClose: () => void; onDelete: () => void }) {
+export function ProductEditor({ categories, product, isNew, onChange, onClose, onDelete }: { categories: ShopCategory[]; product: AdminProduct; isNew: boolean; onChange: (p: AdminProduct) => void; onClose: () => void; onDelete: () => void }) {
   const set = <K extends keyof AdminProduct>(k: K, v: AdminProduct[K]) => onChange({ ...product, [k]: v })
   const move = (i: number, d: -1 | 1) => {
     const imgs = [...product.images]
@@ -40,8 +41,10 @@ export function ProductEditor({ product, isNew, onChange, onClose, onDelete }: {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-x-10 gap-y-6">
         <Text label="Nombre" value={product.name} onChange={(v) => set('name', v)} placeholder="Ej. Polillas" />
         <Text label="Código" value={product.code} onChange={(v) => set('code', v)} placeholder="Ej. JLT-TB-003" />
-        <Select label="Tipo de pieza" value={product.category} onChange={(v) => set('category', v)} options={categoryOptions} />
+        <Select label="Categoría en la tienda" value={product.section} onChange={(v) => set('section', v)} options={categories.map((c) => ({ value: c.id, label: c.hidden ? `${c.name} (oculta)` : c.name }))} />
+        <Select label="Tipo de pieza (define si pide talla o medida)" value={product.category} onChange={(v) => set('category', v)} options={categoryOptions} />
         <Text label="Colección" value={product.collection} onChange={(v) => set('collection', v)} />
+        <span className="hidden lg:block" aria-hidden="true" />
         <NumberField label="Precio (MXN)" optional value={product.price} onChange={(v) => set('price', v)} hint="Déjalo vacío para mostrar “por confirmar”." />
         <Select label="Disponibilidad" value={product.status} onChange={(v) => set('status', v)} options={statusOptions} />
         <Text label="Resumen corto" value={product.short} onChange={(v) => set('short', v)} placeholder="Ej. Lona de algodón · 38 × 42 cm" />

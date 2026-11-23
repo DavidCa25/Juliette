@@ -5,6 +5,7 @@
  * Lo técnico o sensible (número de WhatsApp, servicios externos) va en variables de entorno.
  */
 import raw from '../../content/settings.json'
+import { readCategories } from '../data/categories'
 
 type Settings = {
   whatsappDisplay: string
@@ -26,6 +27,7 @@ type Settings = {
   policy: { returnDays: number; damageHours: number; refundDays: number; privacyDays: number; designFee: string }
   legal: { owner: string; taxId: string; address: string; country: string; updated: string }
   videos?: { title: string; tag: string; video: string; poster?: string }[]
+  categories?: unknown
 }
 
 const s = raw as unknown as Settings
@@ -82,3 +84,15 @@ export const customPricing = {
   text: null as number | null,
   back: null as number | null,
 }
+
+/** Categorías de la tienda, en el orden que eligió Julietté en el panel. */
+export const shopCategories = readCategories(s.categories)
+
+/** Videos de la portada (se editan en Ajustes). */
+export const showcaseVideos = (s.videos ?? []).map((v) => ({
+  src: v.video,
+  poster: v.poster || '/media/isotipo_burdeos_md.png',
+  title: v.title,
+  tag: v.tag,
+  label: `Video: ${v.title}`,
+}))

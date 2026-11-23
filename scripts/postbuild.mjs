@@ -16,6 +16,14 @@ const products = readdirSync(join(root, 'content/products'))
   .map((f) => ({ slug: f.replace(/\.json$/, ''), ...JSON.parse(readFileSync(join(root, 'content/products', f), 'utf8')) }))
   .filter((p) => p.name)
 
+// Categorías de la tienda (las mismas reglas que src/data/categories.ts)
+const typeToCategory = { tote: 'tote-bags', prenda: 'prendas', cuadro: 'cuadros', agenda: 'agendas-y-papeleria', accesorio: 'accesorios', hogar: 'hogar', otro: 'otras-piezas' }
+const savedCategories = (Array.isArray(settings.categories) ? settings.categories : []).filter((c) => c && c.id && c.name)
+const categories = savedCategories.length
+  ? savedCategories
+  : [['tote-bags', 'Tote bags'], ['prendas', 'Prendas'], ['cuadros', 'Cuadros'], ['agendas-y-papeleria', 'Agendas y papelería'], ['accesorios', 'Accesorios'], ['hogar', 'Hogar'], ['otras-piezas', 'Otras piezas']].map(([id, name]) => ({ id, name }))
+const sectionOf = (p) => (p.section && categories.some((c) => c.id === p.section) ? p.section : typeToCategory[p.category] || 'otras-piezas')
+
 const esc = (s = '') => String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 const clip = (s = '', n = 160) => (s.length > n ? s.slice(0, n - 1).trimEnd() + '…' : s)
 const firstImage = (p) => (Array.isArray(p.images) && p.images[0] ? (typeof p.images[0] === 'string' ? p.images[0] : p.images[0].src) : '/media/og.jpg')
@@ -31,6 +39,15 @@ const pages = [
   { path: '/reembolsos', title: 'Cambios y reembolsos · Julietté', desc: 'Política de cambios, cancelaciones y reembolsos.', priority: '0.3' },
   { path: '/privacidad', title: 'Aviso de privacidad · Julietté', desc: 'Cómo cuidamos tus datos personales.', priority: '0.3' },
   { path: '/cookies', title: 'Política de cookies · Julietté', desc: 'Qué cookies usamos y cómo cambiar tus preferencias.', priority: '0.3' },
+  ...categories
+    .filter((c) => !c.hidden && products.some((p) => sectionOf(p) === c.id))
+    .map((c) => ({
+      path: `/coleccion/${c.id}`,
+      title: `${c.name} · Julietté`,
+      desc: clip(c.description || `${c.name} pintadas a mano por Julietté. Piezas listas para entregar o bajo pedido.`),
+      image: c.cover || firstImage(products.find((p) => sectionOf(p) === c.id)),
+      priority: '0.8',
+    })),
   ...products.map((p) => ({
     path: `/producto/${p.slug}`,
     title: `${p.name} · Julietté`,
